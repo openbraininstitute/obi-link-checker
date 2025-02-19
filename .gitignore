@@ -1,0 +1,36 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtual environment
+venv/
+env/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+
+# Logs and Debugging
+logs/
+*.log
+
+# Test & Coverage Reports
+.coverage
+htmlcov/
+*.pytest_cache/
+
+# Selenium WebDriver Cache
+chromedriver.log
+
+# Dependency Files
+pip-log.txt
+pip-delete-this-directory.txt
+
+# OS-Specific Files
+.DS_Store
+Thumbs.db
+
+# GitHub Actions cache
+.github/workflows/*.log
