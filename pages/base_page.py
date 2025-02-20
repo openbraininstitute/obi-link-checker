@@ -21,8 +21,6 @@ class BasePage:
         print(f"Base URL: {self.base_url}")
         print(f"Page URL: {page_url}")
         print(f"Final Redirect URL: {url}")
-        # url = self.base_url + page_url
-        # self.browser.get(url)
 
 
     def get_all_links(self):

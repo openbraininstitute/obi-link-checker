@@ -58,30 +58,10 @@ class HomePage(BasePage):
         for page in self.pages:
             full_url = page
             self.logger.info(f"➡️ FROM HOME_PAGE.PY Navigating to: {full_url}")
-            print(f"🔗 FROM HOME_PAGE.PY Navigating to: {full_url}")
+            # print(f"🔗 FROM HOME_PAGE.PY Navigating to: {full_url}")
 
             self.go_to_page(full_url)
             time.sleep(2)
-
-            # current_url = self.browser.current_url
-            # self.logger.info(f"✅ Arrived at: {current_url}")
-            # print(f"✅ Arrived at: {current_url}")
-
-            # if not self.is_logged_in():
-            #     self.logger.warning(f"🚨 Lost session before reaching {full_url}. Logging in again...")
-            #     login_page = LoginPage(self.browser, self.wait, self.base_url)
-            #     login_page.go_to_page(full_url)
-            #     login_page.login()
-
-                # if not self.is_logged_in():
-                #     self.logger.error("❌ Login failed after session loss. Stopping execution.")
-                #     raise Exception("Login failure detected!")
-
-                # self.logger.info(f"🔄 Re-navigating to: {full_url} after re-login")
-                # print(f"🔄 Re-navigating to: {full_url} after re-login")
-                # self.go_to_page(full_url)
-                # print(f"🔄 Going to to:{full_url}")
-                # time.sleep(2)
 
             if "login" in self.browser.current_url:
                 time.sleep(2)
@@ -102,7 +82,7 @@ class HomePage(BasePage):
 
             current_url = self.browser.current_url
             self.logger.info(f"✅ Arrived at: {current_url}")
-            print(f"✅ Arrived at: {current_url}")
+            # print(f"✅ Arrived at: {current_url}")
 
             links = self.get_all_links()
             self.logger.info(f"🔗 Found {len(links)} links on {full_url}")
