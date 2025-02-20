@@ -4,6 +4,9 @@ import logging
 import time
 import datetime
 from urllib.parse import urljoin
+
+from bs4 import BeautifulSoup
+
 from pages.home_page import HomePage
 
 
@@ -17,10 +20,16 @@ class TestLinks:
         home_page = HomePage(browser, wait, base_url)
         dynamic_pages = home_page.pages
         all_links = set()
+        soup = None
 
         for page in dynamic_pages:
             browser.get(page)
             time.sleep(2)  # Allow time for page load
+
+            # Use BeautifulSoup for better parsing
+            soup = BeautifulSoup(browser.page_source, "html.parser")
+            page_links = {link.get("href") for link in soup.find_all("a", href=True)}
+
             page_links = home_page.get_all_links()
             all_links.update(page_links)
 
@@ -28,8 +37,6 @@ class TestLinks:
         print(f"🔗 FROM TESTLINKS***** Found {len(all_links)} links")
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        # Before the loop:
-        # total_links = len(all_links)
         broken_count = 0
         valid_count = 0
 
@@ -46,13 +53,20 @@ class TestLinks:
                     response = requests.get(full_link, headers=headers, allow_redirects=True, timeout=5)
                     status = response.status_code
 
+                    # Extract element text safely
+                    element_text = "[No text]"
+                    if soup:
+                        found_element = soup.find("a", href=link)
+                        if found_element:
+                            element_text = found_element.get_text(strip=True) or "[No text]"
+
                     print(f"Checking: {full_link} - Status: {status}")
 
                     if status >= 400:
                         logging.warning(f"⚠️ Broken Link: {full_link} → Status {status}")
-                        broken_links_log.write(f"{timestamp} | {full_link} → Status {status}\n")
+                        broken_links_log.write(f"{timestamp} | {full_link} → Status {status} | Found in: {element_text}\n")
                         broken_count += 1
-                        print(f"❌ Broken link detected: {full_link}")
+                        print(f"❌ Broken link detected: {full_link} - Found in: {element_text}")
                     else:
                         logging.info(f"✅ Working Link: {full_link} → Status {status}")
                         working_links_log.write(f"{timestamp} | {full_link} → Status {status}\n")
