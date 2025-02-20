@@ -25,12 +25,13 @@ class TestLinks:
 
         try:
             for link in all_links:
-                time.sleep(13)
                 logging.info(f"➡️ Checking link: {link}")
                 print(f"➡️ Checking link: {link}")
 
                 try:
-                    response = requests.head(link, allow_redirects=True, timeout=5)
+                    headers = {"User-Agent": "Mozilla/5.0"}
+                    response = requests.get(link, headers=headers, allow_redirects=True, timeout=5)
+
                     logging.info(f"✅ {link} → Status {response.status_code}")
                     print(f"✅ {link} → Status {response.status_code}")
 
@@ -38,13 +39,16 @@ class TestLinks:
                         logging.warning(f"⚠️ Broken Link: {link} returned {response.status_code}")
                         print(f"⚠️ Broken Link: {link} returned {response.status_code}")
                         broken_links_log.write(f"{link} → Status {response.status_code}\n")
+                        broken_links_log.flush()
                     else:
                         working_links_log.write(f"{link} → Status {response.status_code}\n")
+                        working_links_log.flush()
 
                 except requests.RequestException as e:
                     logging.error(f"❌ Broken Link: {link} (Error: {str(e)})")
                     print(f"❌ Broken Link: {link} (Error: {str(e)})")
                     broken_links_log.write(f"{link} → ERROR: {str(e)}\n")
+                    broken_links_log.flush()
 
                     # ✅ Close log files
         finally:
