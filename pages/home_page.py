@@ -1,7 +1,4 @@
-import logging
-import time
 
-import os
 import time
 import logging
 from pages.base_page import BasePage
@@ -53,12 +50,10 @@ class HomePage(BasePage):
 
         all_links = set()
         self.logger.info(f"📌 Starting link extraction. Total pages: {len(self.pages)}")
-        print(f"📌 Total pages to scrape: {len(self.pages)}")
 
         for page in self.pages:
             full_url = page
             self.logger.info(f"➡️ FROM HOME_PAGE.PY Navigating to: {full_url}")
-            # print(f"🔗 FROM HOME_PAGE.PY Navigating to: {full_url}")
 
             self.go_to_page(full_url)
             time.sleep(2)
@@ -82,7 +77,6 @@ class HomePage(BasePage):
 
             current_url = self.browser.current_url
             self.logger.info(f"✅ Arrived at: {current_url}")
-            # print(f"✅ Arrived at: {current_url}")
 
             links = self.get_all_links()
             self.logger.info(f"🔗 Found {len(links)} links on {full_url}")

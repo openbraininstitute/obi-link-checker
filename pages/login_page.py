@@ -29,7 +29,7 @@ class LoginPage(BasePage):
         self.browser.delete_all_cookies()
         target_url = self.base_url
         self.browser.get(target_url)
-        print("Starting URL from pages/login_page.py:", self.browser.current_url)
+        # print("Starting URL from pages/login_page.py:", self.browser.current_url)
         return self.browser.current_url
 
     def find_login_button(self):
