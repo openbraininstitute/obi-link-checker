@@ -1,4 +1,6 @@
 import logging
+import urllib
+from urllib.parse import urljoin
 
 import pytest
 from selenium.common import TimeoutException
@@ -14,8 +16,13 @@ class BasePage:
         self.browser.set_page_load_timeout(60)
 
     def go_to_page(self, page_url):
-        url = self.base_url + page_url
+        url = urljoin(self.base_url, page_url)
         self.browser.get(url)
+        print(f"Base URL: {self.base_url}")
+        print(f"Page URL: {page_url}")
+        print(f"Final Redirect URL: {url}")
+        # url = self.base_url + page_url
+        # self.browser.get(url)
 
 
     def get_all_links(self):
@@ -30,9 +37,8 @@ class BasePage:
         return self.wait.until(EC.presence_of_element_located(locator))
 
     def is_logged_in(self):
-        """Checks if the user is still logged in."""
-        try:
-            self.wait.until(EC.presence_of_element_located((By.ID, "logout-button")))
-            return True
-        except TimeoutException:
-            return False
+        """Check if the user is logged in by verifying the URL contains '/virtual-lab'."""
+        return "/virtual-lab" in self.browser.current_url
+
+
+

@@ -1,3 +1,5 @@
+import time
+
 import pytest
 import logging
 import requests
@@ -13,37 +15,42 @@ class TestLinks:
         print("🚀 Starting test: Checking for broken links.")
 
         browser, wait, base_url = setup
-
-        login_page = LoginPage(browser, wait, base_url)
-        login_page.navigate_to_homepage()
-        print(f"🚀 Opened login page. Current URL: {browser.current_url}")
-
-        if "error" in browser.current_url:
-            pytest.fail(f"Login failed. Redirected to: {browser.current_url}")
-
         home_page = HomePage(browser, wait, base_url)
         all_links = home_page.login_and_scrape()
 
         assert all_links, "❌ No links found on the website."
 
-        # Validate each link
-        for link in all_links:
-            logging.info(f"➡️ Checking link: {link}")
-            print(f"➡️ Checking link: {link}")
+        broken_links_log = open("broken_links.log", "w", encoding="utf-8")
+        working_links_log = open("working_links.log", "w", encoding="utf-8")
 
-            try:
-                response = requests.head(link, allow_redirects=True, timeout=5)
-                logging.info(f"✅ {link} → Status {response.status_code}")
-                print(f"✅ {link} → Status {response.status_code}")
+        try:
+            for link in all_links:
+                time.sleep(13)
+                logging.info(f"➡️ Checking link: {link}")
+                print(f"➡️ Checking link: {link}")
 
-                if response.status_code >= 400:
-                    logging.warning(f"⚠️ Potential issue: {link} returned {response.status_code}")
-                    print(f"⚠️ Potential issue: {link} returned {response.status_code}")
+                try:
+                    response = requests.head(link, allow_redirects=True, timeout=5)
+                    logging.info(f"✅ {link} → Status {response.status_code}")
+                    print(f"✅ {link} → Status {response.status_code}")
 
-            except requests.RequestException as e:
-                logging.error(f"❌ Broken Link: {link} (Error: {str(e)})")
-                print(f"❌ Broken Link: {link} (Error: {str(e)})")
+                    if response.status_code >= 400:
+                        logging.warning(f"⚠️ Broken Link: {link} returned {response.status_code}")
+                        print(f"⚠️ Broken Link: {link} returned {response.status_code}")
+                        broken_links_log.write(f"{link} → Status {response.status_code}\n")
+                    else:
+                        working_links_log.write(f"{link} → Status {response.status_code}\n")
 
-        logging.info("✅ Test completed. Check broken_links.log for details.")
-        print("✅ Test completed. Check broken_links.log for details.")
+                except requests.RequestException as e:
+                    logging.error(f"❌ Broken Link: {link} (Error: {str(e)})")
+                    print(f"❌ Broken Link: {link} (Error: {str(e)})")
+                    broken_links_log.write(f"{link} → ERROR: {str(e)}\n")
+
+                    # ✅ Close log files
+        finally:
+                broken_links_log.close()
+                working_links_log.close()
+
+                logging.info("✅ Test completed. Check broken_links.log and working_links.log for details.")
+                print("✅ Test completed. Check broken_links.log and working_links.log for details.")
 

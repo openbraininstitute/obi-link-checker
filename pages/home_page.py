@@ -6,6 +6,7 @@ import time
 import logging
 from pages.base_page import BasePage
 from pages.login_page import LoginPage
+from pages.urls import get_dynamic_pages
 
 
 class HomePage(BasePage):
@@ -14,7 +15,7 @@ class HomePage(BasePage):
         self.logger = logging.getLogger(__name__)
         self.lab_id = "37a3a2e8-a4b4-456b-8aff-4e23e87a5cbc"
         self.project_id = "8abcb1e3-b714-4267-a22c-3b3dc4be5306"
-        self.pages = []
+        self.pages = get_dynamic_pages(base_url,self.lab_id, self.project_id)
 
     def go_to_home_page(self):
         """Navigates to the homepage."""
@@ -25,19 +26,24 @@ class HomePage(BasePage):
         """Logs in before scraping all pages."""
         self.logger.info("🔄 Logging in before scraping...")
 
-        login_page = LoginPage(self.browser, self.wait, self.base_url)
-        login_page.navigate_to_homepage()
-        login_page.login()
+        if not self.is_logged_in():
+            login_page = LoginPage(self.browser, self.wait, self.base_url)
+            login_page.navigate_to_homepage()
+            login_page.login()
 
-        if "login" in self.browser.current_url:
-            self.logger.error("❌ Login failed: Still on login page!")
-            raise Exception("Login failed!")
+            if "login" in self.browser.current_url:
+                self.logger.error("❌ Login failed: Still on login page!")
+                raise Exception("Login failed!")
 
-        if self.browser.current_url == self.base_url:
-            self.logger.warning("⚠️ Redirected back to base_url. Navigating to virtual lab manually.")
-            self.browser.get(f"{self.base_url}/virtual-lab")
+            if self.browser.current_url == self.base_url:
+                self.logger.warning("⚠️ Redirected back to base_url. Navigating to virtual lab manually.")
+                self.browser.get(f"{self.base_url}/virtual-lab")
+                time.sleep(3)
 
-        self.logger.info("✅ Login successful, ready to scrape.")
+            self.logger.info("✅ Login successful, ready to scrape.")
+        else:
+            self.logger.info("🔄 Already logged in, proceeding with scraping.")
+        return self.get_all_links_from_all_pages()
 
     def get_all_links_from_all_pages(self):
         """Extracts all links from all pages."""
@@ -47,29 +53,56 @@ class HomePage(BasePage):
 
         all_links = set()
         self.logger.info(f"📌 Starting link extraction. Total pages: {len(self.pages)}")
+        print(f"📌 Total pages to scrape: {len(self.pages)}")
 
         for page in self.pages:
             full_url = page
-            self.logger.info(f"➡️ Navigating to: {full_url}")
+            self.logger.info(f"➡️ FROM HOME_PAGE.PY Navigating to: {full_url}")
+            print(f"🔗 FROM HOME_PAGE.PY Navigating to: {full_url}")
+
             self.go_to_page(full_url)
             time.sleep(2)
 
-            current_url = self.browser.current_url
-            self.logger.info(f"✅ Arrived at: {current_url}")
+            # current_url = self.browser.current_url
+            # self.logger.info(f"✅ Arrived at: {current_url}")
+            # print(f"✅ Arrived at: {current_url}")
 
-            if not self.is_logged_in():
-                self.logger.warning(f"🚨 Lost session before reaching {full_url}. Logging in again...")
-                login_page = LoginPage(self.browser, self.wait, self.base_url)
-                login_page.go_to_page()
-                login_page.login()
+            # if not self.is_logged_in():
+            #     self.logger.warning(f"🚨 Lost session before reaching {full_url}. Logging in again...")
+            #     login_page = LoginPage(self.browser, self.wait, self.base_url)
+            #     login_page.go_to_page(full_url)
+            #     login_page.login()
 
-                if not self.is_logged_in():
-                    self.logger.error("❌ Login failed after session loss. Stopping execution.")
+                # if not self.is_logged_in():
+                #     self.logger.error("❌ Login failed after session loss. Stopping execution.")
+                #     raise Exception("Login failure detected!")
+
+                # self.logger.info(f"🔄 Re-navigating to: {full_url} after re-login")
+                # print(f"🔄 Re-navigating to: {full_url} after re-login")
+                # self.go_to_page(full_url)
+                # print(f"🔄 Going to to:{full_url}")
+                # time.sleep(2)
+
+            if "login" in self.browser.current_url:
+                time.sleep(2)
+                if "login" in self.browser.current_url:
+                    self.logger.warning(
+                    f"🚨 Session lost! Redirected to login before accessing {full_url}. Logging in again...")
+                    login_page = LoginPage(self.browser, self.wait, self.base_url)
+                    login_page.navigate_to_homepage()
+                    login_page.login()
+
+                if "login" in self.browser.current_url:
+                    self.logger.error("❌ Re-login failed! Stopping execution.")
                     raise Exception("Login failure detected!")
 
-                self.logger.info(f"🔄 Re-navigating to: {full_url} after re-login")
+                # ✅ Try navigating again after re-login
                 self.go_to_page(full_url)
                 time.sleep(2)
+
+            current_url = self.browser.current_url
+            self.logger.info(f"✅ Arrived at: {current_url}")
+            print(f"✅ Arrived at: {current_url}")
 
             links = self.get_all_links()
             self.logger.info(f"🔗 Found {len(links)} links on {full_url}")
@@ -77,5 +110,4 @@ class HomePage(BasePage):
 
         self.logger.info(f"✅ Total unique links found: {len(all_links)}")
         return list(all_links)
-
 
