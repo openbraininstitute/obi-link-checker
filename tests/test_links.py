@@ -28,6 +28,11 @@ class TestLinks:
         print(f"🔗 FROM TESTLINKS***** Found {len(all_links)} links")
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+        # Before the loop:
+        # total_links = len(all_links)
+        broken_count = 0
+        valid_count = 0
+
         # Open log files for storing results
         with open("broken_links.log", "w", encoding="utf-8") as broken_links_log, \
              open("working_links.log", "w", encoding="utf-8") as working_links_log:
@@ -41,15 +46,29 @@ class TestLinks:
                     response = requests.get(full_link, headers=headers, allow_redirects=True, timeout=5)
                     status = response.status_code
 
+                    print(f"Checking: {full_link} - Status: {status}")
+
                     if status >= 400:
                         logging.warning(f"⚠️ Broken Link: {full_link} → Status {status}")
                         broken_links_log.write(f"{timestamp} | {full_link} → Status {status}\n")
+                        broken_count += 1
+                        print(f"❌ Broken link detected: {full_link}")
                     else:
                         logging.info(f"✅ Working Link: {full_link} → Status {status}")
                         working_links_log.write(f"{timestamp} | {full_link} → Status {status}\n")
+                        valid_count += 1
+                        print(f"✅ Valid link detected: {full_link}")
 
                 except requests.RequestException as e:
                     logging.error(f"❌ Broken Link: {full_link} (Error: {str(e)})")
                     broken_links_log.write(f"{timestamp} | {full_link} → ERROR: {str(e)}\n")
+                    broken_count += 1
+                    print(f"❌ Exception caught for: {full_link} - {str(e)}")
+
+        # Print Summary:
+        print("\n📊 Test Summary:")
+        print(f"🔗 Total links found: {len(all_links)}")
+        print(f"✅ Valid links: {valid_count}")
+        print(f"❌ Broken links: {broken_count}")
 
         logging.info("✅ Test completed. Check broken_links.log and working_links.log for details.")

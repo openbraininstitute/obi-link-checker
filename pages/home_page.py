@@ -85,3 +85,13 @@ class HomePage(BasePage):
         self.logger.info(f"✅ Total unique links found: {len(all_links)}")
         return list(all_links)
 
+    def is_logged_in(self):
+        """Checks if the user is already logged in by verifying the current URL."""
+        try:
+            return "virtual-lab" in self.browser.current_url  # Example check
+        except AttributeError:  # If `self.browser` is None or doesn't have `current_url`
+            self.logger.error("❌ Browser object is missing or invalid.")
+            return False
+        except TypeError:  # If `current_url` is None
+            self.logger.error("❌ Unable to retrieve current URL.")
+            return False
