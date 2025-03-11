@@ -69,7 +69,7 @@ jobs:
           OBI_USERNAME: ${{ secrets.OBI_USERNAME }}
           OBI_PASSWORD: ${{ secrets.OBI_PASSWORD }}
         run: |
-          echo "Running tests for ${{ matrix.browser }} in $ENV_URL with Username $OBI_USERNAME"
+          echo "Running tests in $ENV_URL with Username $OBI_USERNAME"
           echo "ENV_URL: $ENV_URL"  
           echo "ENV_NAME: $ENV_NAME"
           uv run pytest tests/test_links.py --env=$ENV_NAME --env_url=$ENV_URL \

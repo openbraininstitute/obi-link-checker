@@ -24,6 +24,7 @@ def pytest_addoption(parser):
     parser.addoption("--headless", action="store_true", help="Run tests in headless mode")
     parser.addoption("--browser", action="store", default="chrome", help="Choose browser: chrome, firefox, safari")
     parser.addoption("--env", action="store", default="staging", help="Choose environment: staging, production")
+    parser.addoption("--env_url", action="store", help="Base URL of the environment")
 
 
 @pytest.fixture(scope="class", autouse=True)
@@ -32,6 +33,7 @@ def setup(request, pytestconfig):
     browser_name = pytestconfig.getoption("--browser")
     headless = pytestconfig.getoption("--headless")
     environment = pytestconfig.getoption("--env")
+    base_url = pytestconfig.getoption("--env_url")
 
     if environment == "staging":
         base_url = "https://staging.openbraininstitute.org/app/virtual-lab"
@@ -39,6 +41,8 @@ def setup(request, pytestconfig):
         base_url = "https://openbraininstitute.org/app/virtual-lab"
     else:
         raise ValueError(f"Invalid environment: {environment}. Choose 'staging' or 'production'.")
+
+    request.cls.base_url = base_url
 
     if browser_name == "chrome":
         options = ChromeOptions()
