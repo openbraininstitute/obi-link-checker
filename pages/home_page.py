@@ -1,17 +1,17 @@
 
 import time
 import logging
-from pages.base_page import BasePage
+from pages.base_page import CustomBasePage
 from pages.login_page import LoginPage
 from pages.urls import get_dynamic_pages
 
 
-class HomePage(BasePage):
+class HomePage(CustomBasePage):
     def __init__(self, browser, wait, base_url):
         super().__init__(browser, wait, base_url)
         self.logger = logging.getLogger(__name__)
-        self.lab_id = "37a3a2e8-a4b4-456b-8aff-4e23e87a5cbc"
-        self.project_id = "8abcb1e3-b714-4267-a22c-3b3dc4be5306"
+        self.lab_id = "70de7008-d7d5-47f3-aa87-59ea47c19291"
+        self.project_id = "7e37545c-ebc9-4ffa-b59c-7d3a211d8d01"
         self.pages = get_dynamic_pages(base_url,self.lab_id, self.project_id)
 
     def go_to_home_page(self):
@@ -34,7 +34,7 @@ class HomePage(BasePage):
 
             if self.browser.current_url == self.base_url:
                 self.logger.warning("⚠️ Redirected back to base_url. Navigating to virtual lab manually.")
-                self.browser.get(f"{self.base_url}/virtual-lab")
+                self.browser.get(f"{self.base_url}")
                 time.sleep(3)
 
             self.logger.info("✅ Login successful, ready to scrape.")

@@ -10,6 +10,7 @@ env/
 # IDE files
 .vscode/
 .idea/
+.idea/vcs.xml
 *.swp
 
 # Logs and Debugging
@@ -27,6 +28,7 @@ chromedriver.log
 # Dependency Files
 pip-log.txt
 pip-delete-this-directory.txt
+util/config.json
 
 # OS-Specific Files
 .DS_Store
