@@ -1,6 +1,7 @@
 
 def get_dynamic_pages(base_url, lab_id, project_id):
     return [
+        f"{base_url}/lab/{lab_id}/overview",
         f"{base_url}/lab/{lab_id}/projects",
         f"{base_url}/lab/{lab_id}/project/{project_id}/home",
         f"{base_url}/lab/{lab_id}/project/{project_id}/team",

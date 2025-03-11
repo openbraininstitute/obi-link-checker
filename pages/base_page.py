@@ -10,10 +10,11 @@ from selenium.webdriver.support import expected_conditions as EC
 @pytest.mark.usefixtures("setup", "logger")
 class CustomBasePage:
 
-    def __init__(self, browser, wait, base_url):
+    def __init__(self, browser, wait, base_url, logger):
         self.browser = browser
         self.wait = wait
         self.base_url = base_url
+        self.logger = logger
         self.browser.set_page_load_timeout(60)
 
     def go_to_page(self, page_url):
@@ -85,7 +86,6 @@ class CustomBasePage:
     def get_all_links(self):
         """Returns all valid absolute links from the page, handling relative URLs and hidden links."""
         try:
-            # ✅ Ensure links and other elements are present before scraping
             self.wait.until(EC.presence_of_all_elements_located((By.TAG_NAME, "a")))
             time.sleep(2)  # Allow additional time for dynamically loaded elements
 

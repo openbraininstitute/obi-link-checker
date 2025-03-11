@@ -1,4 +1,3 @@
-import time
 
 from selenium.common import TimeoutException
 from selenium.webdriver import Keys
@@ -10,7 +9,7 @@ from pages.base_page import CustomBasePage
 
 class LoginPage(CustomBasePage):
     def __init__(self, browser, wait, base_url, logger):
-        super().__init__(browser, wait, base_url)
+        super().__init__(browser, wait, base_url, logger)
         self.logger = logger
 
     def navigate_to_homepage(self):
@@ -18,12 +17,10 @@ class LoginPage(CustomBasePage):
         print(self.base_url, "PRINTING BASE_URL FROM login_page")
         target_url = self.base_url
         self.browser.get(target_url)
-        print(f"______login page_______  {target_url}")
+        print(f"INFO: From login_page.py navigate_to_login method.  {target_url}")
         WebDriverWait(self.browser, 30).until(
             lambda d: "openid-connect" in d.current_url or "auth" in d.current_url
         )
-        # self.logger.info(f"INFO: target_url from pages/login_page.py:, {target_url}")
-        # self.logger.info(f"INFO: Starting URL from pages/login_page.py:, {self.browser.current_url}")
         return target_url
 
     def find_login_button(self):

@@ -13,10 +13,8 @@ def load_config():
             if not config.get('username') or not config.get('password'):
                 raise ValueError("Missing 'username' or 'password' in configuration")
             return config
-        # Check if running in CI (e.g., GitHub Actions)
         if os.getenv('CI'):
             print("Running in CI environment (GitHub Actions)")
-            # Use GitHub Secrets - these need to be set in the GitHub repository settings
             username = os.environ.get("OBI_USERNAME")
             password = os.environ.get("OBI_PASSWORD")
             print(f"Retrieved username: {username}")
@@ -36,7 +34,6 @@ def load_config():
             with config_path.open('r') as f:
                 config = json.load(f)
 
-            # Validate and return the configuration
         return validate_config(config)
 
     except Exception as e:

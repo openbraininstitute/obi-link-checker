@@ -1,10 +1,9 @@
 import logging
 import os
-import time
+import sys
 
 import pytest
 from selenium import webdriver
-from selenium.common import TimeoutException
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
@@ -14,7 +13,6 @@ from selenium.webdriver.safari.service import Service as SafariService
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.firefox import GeckoDriverManager
-from selenium.webdriver.support import expected_conditions as EC
 
 
 from pages.login_page import LoginPage
@@ -36,9 +34,9 @@ def setup(request, pytestconfig):
     environment = pytestconfig.getoption("--env")
 
     if environment == "staging":
-        base_url = "https://staging.openbluebrain.com/app/virtual-lab"
+        base_url = "https://staging.openbraininstitute.org/app/virtual-lab"
     elif environment == "production":
-        base_url = "https://openbluebrain.com/app"
+        base_url = "https://openbraininstitute.org/app/virtual-lab"
     else:
         raise ValueError(f"Invalid environment: {environment}. Choose 'staging' or 'production'.")
 
@@ -85,9 +83,9 @@ def navigate_to_login(setup, logger):
     """Fixture that navigates to the login page"""
     browser, wait, base_url = setup
     login_page = LoginPage(browser, wait, base_url, logger)
-    print(f"Conftest_______ {login_page}")
+    print(f"INFO: Running withing conftest.py {login_page}")
     target_url = login_page.navigate_to_homepage()
-    print(f"Contest.py Navigated to: {target_url}")
+    print(f"INFO: from contest.py Navigated to: {target_url}")
     login_page.wait_for_condition(
         lambda driver: "openid-connect" in driver.current_url,
         timeout=30,
@@ -120,33 +118,38 @@ def login(setup, navigate_to_login, logger):
     yield browser, wait
     login_page.browser.delete_all_cookies()
 
-@pytest.fixture(scope="function")
-def logger(request):
+@pytest.fixture(scope="class")
+def logger():
     """Fixture to initialize the logger object"""
     logger = logging.getLogger(__name__)
-    logging.basicConfig(level=logging.DEBUG)
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.DEBUG)  # Set logging level
 
     project_root = os.path.abspath(os.path.dirname(__file__))
     allure_reports_dir = os.path.join(project_root, "allure_reports")
     log_file_path = os.path.join(allure_reports_dir, "report.log")
-    if not os.path.exists(allure_reports_dir):
-        os.makedirs(allure_reports_dir)
 
-    # Check if logger already has handlers
-    if not any(isinstance(handler, logging.FileHandler) for handler in logger.handlers):
-        file_handler = logging.FileHandler(filename=log_file_path)
-        file_handler.setLevel(logging.DEBUG)
-        file_formatter = logging.Formatter("%(levelname)s : %(asctime)s : %(message)s")
-        file_handler.setFormatter(file_formatter)
-        logger.addHandler(file_handler)
+    # Ensure the logging directory exists
+    os.makedirs(allure_reports_dir, exist_ok=True)
 
-    if not any(isinstance(handler, logging.StreamHandler) for handler in logger.handlers):
-        stream_handler = logging.StreamHandler(sys.stdout)
-        stream_handler.setLevel(logging.DEBUG)
-        stream_formatter = logging.Formatter("\n%(levelname)s : %(asctime)s : %(message)s")
-        stream_handler.setFormatter(stream_formatter)
-        logger.addHandler(stream_handler)
+    # Remove existing handlers to prevent duplicates
+    if logger.hasHandlers():
+        logger.handlers.clear()
 
-    logger.info('Test started')
-    return logger
+    # File handler
+    file_handler = logging.FileHandler(filename=log_file_path)
+    file_handler.setLevel(logging.DEBUG)
+    file_formatter = logging.Formatter("%(levelname)s : %(asctime)s : %(message)s")
+    file_handler.setFormatter(file_formatter)
+    logger.addHandler(file_handler)
+
+    # Console (stream) handler
+    stream_handler = logging.StreamHandler(sys.stdout)
+    stream_handler.setLevel(logging.DEBUG)
+    stream_formatter = logging.Formatter("\n%(levelname)s : %(asctime)s : %(message)s")
+    stream_handler.setFormatter(stream_formatter)
+    logger.addHandler(stream_handler)
+
+    logger.info("🟢 Test started")
+    yield logger  # Yield logger for use in tests
+
+    logger.info("🛑 Test finished")

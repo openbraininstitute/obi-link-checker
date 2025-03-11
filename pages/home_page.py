@@ -7,12 +7,13 @@ from pages.urls import get_dynamic_pages
 
 
 class HomePage(CustomBasePage):
-    def __init__(self, browser, wait, base_url):
-        super().__init__(browser, wait, base_url)
+    def __init__(self, browser, wait, base_url, logger):
+        super().__init__(browser, wait, base_url, logger)
         self.logger = logging.getLogger(__name__)
         self.lab_id = "70de7008-d7d5-47f3-aa87-59ea47c19291"
         self.project_id = "7e37545c-ebc9-4ffa-b59c-7d3a211d8d01"
         self.pages = get_dynamic_pages(base_url,self.lab_id, self.project_id)
+        self.logger = logger
 
     def go_to_home_page(self):
         """Navigates to the homepage."""
