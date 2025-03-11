@@ -14,9 +14,7 @@ on:
 
 jobs:
   test:
-    strategy:
-      matrix:
-        browser: [firefox]
+    timeout-minutes: 7
     runs-on: ubuntu-latest
     environment: ${{ inputs.env }}
 
@@ -34,8 +32,7 @@ jobs:
       - name: Install required dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y google-chrome-stable
-          sudo apt-get install -y firefox
+          sudo apt-get install -y firefox  -o Debug::pkgProblemResolver=true
 
       # Installation of 'uv' is required
       - name: Install uv
@@ -75,9 +72,9 @@ jobs:
           echo "Running tests for ${{ matrix.browser }} in $ENV_URL with Username $OBI_USERNAME"
           echo "ENV_URL: $ENV_URL"  
           echo "ENV_NAME: $ENV_NAME"
-          uv run pytest tests/test_login.py --env=$ENV_NAME --env_url=$ENV_URL \
-          -sv --headless --html=latest_logs/report_$ENV_NAME_${{ matrix.browser }}.html \
-            --self-contained-html --browser-name=${{ matrix.browser }}
+          uv run pytest tests/test_links.py --env=$ENV_NAME --env_url=$ENV_URL \
+          -sv --headless --html=latest_logs/report_$ENV_NAME_firefox.html \
+            --self-contained-html --browser-name=firefox
 
       # Upload test artifacts (screenshots) if failure
       - name: Upload test artifacts (screenshots)
