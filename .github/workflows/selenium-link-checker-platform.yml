@@ -1,0 +1,48 @@
+name: Run all tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - feature
+  pull_request:
+    branches:
+      - main
+      - test-branch
+  schedule:
+    - cron: "0 7 * * 2"  # Every Tuesday at 7:00 AM UTC (8:00 AM Zurich time during CET)
+    - cron: "0 7 * * 5"  # Every Friday at 7:00 AM UTC (8:00 AM Zurich time during CET)
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+  test-staging:
+    needs: run-tests
+    uses: ./.github/workflows/reusable-workflow.yml
+    with:
+      env: "staging"
+      artifact-name: "testing in staging"
+    secrets: inherit
+
+
+  test-production:
+    needs: run-tests
+    uses: ./.github/workflows/reusable-workflow.yml
+    with:
+      env: "production"
+      artifact-name: "Testing in Production"
+    secrets: inherit
+
+
+
+
