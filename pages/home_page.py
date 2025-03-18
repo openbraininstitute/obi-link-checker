@@ -1,3 +1,7 @@
+# Copyright (c) 2024 Blue Brain Project/EPFL
+# Copyright (c) 2025 Open Brain Institute
+# SPDX-License-Identifier: Apache-2.0
+
 
 import time
 import logging
@@ -10,8 +14,8 @@ class HomePage(CustomBasePage):
     def __init__(self, browser, wait, base_url, logger):
         super().__init__(browser, wait, base_url, logger)
         self.logger = logging.getLogger(__name__)
-        self.lab_id = "70de7008-d7d5-47f3-aa87-59ea47c19291"
-        self.project_id = "7e37545c-ebc9-4ffa-b59c-7d3a211d8d01"
+        self.lab_id = "d8f2d02a-05b9-4e25-8f68-45b7d8818703"
+        self.project_id = "8fd987ca-8f05-497b-939f-c77027ddd004"
         self.pages = get_dynamic_pages(base_url,self.lab_id, self.project_id)
         self.logger = logger
 
@@ -36,7 +40,7 @@ class HomePage(CustomBasePage):
             if self.browser.current_url == self.base_url:
                 self.logger.warning("⚠️ Redirected back to base_url. Navigating to virtual lab manually.")
                 self.browser.get(f"{self.base_url}")
-                time.sleep(3)
+                # time.sleep(3)
 
             self.logger.info("✅ Login successful, ready to scrape.")
         else:
@@ -64,7 +68,7 @@ class HomePage(CustomBasePage):
                 if "login" in self.browser.current_url:
                     self.logger.warning(
                     f"🚨 Session lost! Redirected to login before accessing {full_url}. Logging in again...")
-                    login_page = LoginPage(self.browser, self.wait, self.base_url)
+                    login_page = LoginPage(self.browser, self.wait, self.base_url, self.logger)
                     login_page.navigate_to_homepage()
                     login_page.login()
 
@@ -72,9 +76,8 @@ class HomePage(CustomBasePage):
                     self.logger.error("❌ Re-login failed! Stopping execution.")
                     raise Exception("Login failure detected!")
 
-                # ✅ Try navigating again after re-login
                 self.go_to_page(full_url)
-                time.sleep(2)
+                # time.sleep(2)
 
             current_url = self.browser.current_url
             self.logger.info(f"✅ Arrived at: {current_url}")
@@ -89,10 +92,10 @@ class HomePage(CustomBasePage):
     def is_logged_in(self):
         """Checks if the user is already logged in by verifying the current URL."""
         try:
-            return "virtual-lab" in self.browser.current_url  # Example check
-        except AttributeError:  # If `self.browser` is None or doesn't have `current_url`
+            return "virtual-lab" in self.browser.current_url
+        except AttributeError:
             self.logger.error("❌ Browser object is missing or invalid.")
             return False
-        except TypeError:  # If `current_url` is None
+        except TypeError:
             self.logger.error("❌ Unable to retrieve current URL.")
             return False

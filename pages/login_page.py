@@ -1,3 +1,4 @@
+import time
 
 from selenium.common import TimeoutException
 from selenium.webdriver import Keys
