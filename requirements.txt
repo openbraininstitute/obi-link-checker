@@ -1,5 +1,6 @@
 selenium~=4.28.1
 pytest~=8.3.4
+pytest-html~=4.1.1
 requests~=2.32.3
 pages~=0.3
 webdriver-manager~=4.0.2
