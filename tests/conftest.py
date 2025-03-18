@@ -39,12 +39,13 @@ def setup(request, pytestconfig):
     environment = pytestconfig.getoption("--env")
     base_url = pytestconfig.getoption("--env_url")
 
-    if environment == "staging":
-        base_url = "https://staging.openbraininstitute.org/app/virtual-lab"
-    elif environment == "production":
-        base_url = "https://openbraininstitute.org/app/virtual-lab"
-    else:
-        raise ValueError(f"Invalid environment: {environment}. Choose 'staging' or 'production'.")
+    if not base_url:
+        if environment == "staging":
+            base_url = "https://staging.openbraininstitute.org/app/virtual-lab"
+        elif environment == "production":
+            base_url = "https://openbraininstitute.org/app/virtual-lab"
+        else:
+            raise ValueError(f"Invalid environment: {environment}. Choose 'staging' or 'production'.")
 
     request.cls.base_url = base_url
 

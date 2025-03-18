@@ -31,7 +31,7 @@ jobs:
     uses: ./.github/workflows/reusable-workflow.yml
     with:
       env: "staging"
-      artifact-name: "testing in staging"
+      artifact-name: "Testing in Staging"
     secrets: inherit
 
 
