@@ -29,10 +29,10 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install required dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y firefox  -o Debug::pkgProblemResolver=true
+#      - name: Install required dependencies
+#        run: |
+#          sudo apt-get update
+#          sudo apt-get install -y firefox  -o Debug::pkgProblemResolver=true
 
       # Installation of 'uv' is required
       - name: Install uv

@@ -126,6 +126,77 @@ def login(setup, navigate_to_login, logger):
     yield browser, wait
     login_page.browser.delete_all_cookies()
 
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item):
+    """
+    Pytest hook implementation to handle test reporting.
+
+    - Captures screenshots when a test fails.
+    - Embeds the screenshot into the HTML report.
+    """
+    pytest_html = item.config.pluginmanager.getplugin('html')
+    outcome = yield
+    report = outcome.get_result()
+    extra = getattr(report, 'extra', [])
+
+    if report.when == 'call' or report.when == "setup":
+        xfail = hasattr(report, 'wasxfail')
+        if (report.skipped and xfail) or (report.failed and not xfail):
+            print("Test failed - handling it")
+
+            project_root = os.path.abspath(os.path.dirname(__file__))
+            error_logs_dir = os.path.join(project_root, "latest_logs", "errors")
+            os.makedirs(error_logs_dir, exist_ok=True)
+
+            test_name = report.nodeid.replace("::", "_").split("/")[-1]
+            file_name = os.path.join(error_logs_dir, test_name + ".png")
+            print(f"Intended screenshot path: {file_name}")
+
+            browser = None
+            if hasattr(item, "cls"):
+                browser = getattr(item.cls, "browser", None)
+            if not browser:
+                browser = getattr(item, "_browser", None)
+                print(f"Browser found in item attribute")
+
+            if browser:
+                try:
+                    print("Browser object found - making screenshot")
+                    _capture_screenshot(file_name, browser)
+                    if os.path.exists(file_name):
+                        print(f"Screenshot successfully saved at: {file_name}")
+                        html = ('<div><img src="%s" alt="screenshot" '
+                                'style="width:304px;height:228px;" onclick="window.open(this.src)" '
+                                'align="right"/></div>') % os.path.relpath(file_name)
+                        extra.append(pytest_html.extras.html(html))
+                    else:
+                        print(f"Screenshot not found at: {file_name}")
+                except Exception as e:
+                    print(f"Exception occurred while capturing screenshot: {e}")
+            else:
+                print("No browser object found - skipping screenshot capture")
+
+        report.extra = extra
+def _capture_screenshot(name, browser):
+    """
+        Helper function to capture and save a screenshot.
+
+        - Ensures the target directory exists.
+        - Uses the browser object to capture a full-page screenshot.
+        :param name: The full path where the screenshot will be saved.
+        :param browser: The browser object used for screenshot capture.
+        """
+    try:
+        print(f"Creating error  directory at:{os.path.dirname(name)}")
+        os.makedirs(os.path.dirname(name), exist_ok=True)
+        print(f"Saving screenshot to: {name}")
+        # browser.get_full_page_screenshot_as_file(name)
+        browser.save_screenshot(name)
+        print(f"Screenshot captured: {name}")
+    except Exception as e:
+        print(f"Failed to capture screenshot '{name}': {e}")
+
 @pytest.fixture(scope="class")
 def logger():
     """Fixture to initialize the logger object"""
