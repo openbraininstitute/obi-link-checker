@@ -65,7 +65,7 @@ jobs:
       - name: Run Tests Based on Environment
         env:
           ENV_URL: ${{ vars.ENV_URL }}
-          ENV_NAME: ${{ inputs.env }}
+          ENV_NAME: ${{ var.ENV_NAME }}
           OBI_USERNAME: ${{ secrets.OBI_USERNAME }}
           OBI_PASSWORD: ${{ secrets.OBI_PASSWORD }}
         run: |
@@ -74,7 +74,7 @@ jobs:
           echo "ENV_NAME: $ENV_NAME"
           uv run pytest tests/test_links.py --env=$ENV_NAME --env_url=$ENV_URL \
           -sv --headless --html=latest_logs/report_$ENV_NAME_firefox.html \
-            --self-contained-html --browser-name=firefox
+            --self-contained-html --browser=firefox
 
       # Upload test artifacts (screenshots) if failure
       - name: Upload test artifacts (screenshots)
