@@ -130,27 +130,24 @@ def login(setup, navigate_to_login, logger):
 def logger():
     """Fixture to initialize the logger object"""
     logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)  # Set logging level
+    logger.setLevel(logging.DEBUG)
 
     project_root = os.path.abspath(os.path.dirname(__file__))
     allure_reports_dir = os.path.join(project_root, "allure_reports")
     log_file_path = os.path.join(allure_reports_dir, "report.log")
 
-    # Ensure the logging directory exists
     os.makedirs(allure_reports_dir, exist_ok=True)
 
     # Remove existing handlers to prevent duplicates
     if logger.hasHandlers():
         logger.handlers.clear()
 
-    # File handler
     file_handler = logging.FileHandler(filename=log_file_path)
     file_handler.setLevel(logging.DEBUG)
     file_formatter = logging.Formatter("%(levelname)s : %(asctime)s : %(message)s")
     file_handler.setFormatter(file_formatter)
     logger.addHandler(file_handler)
 
-    # Console (stream) handler
     stream_handler = logging.StreamHandler(sys.stdout)
     stream_handler.setLevel(logging.DEBUG)
     stream_formatter = logging.Formatter("\n%(levelname)s : %(asctime)s : %(message)s")
@@ -158,6 +155,6 @@ def logger():
     logger.addHandler(stream_handler)
 
     logger.info("🟢 Test started")
-    yield logger  # Yield logger for use in tests
+    yield logger
 
     logger.info("🛑 Test finished")

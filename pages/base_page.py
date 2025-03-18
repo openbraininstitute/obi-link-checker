@@ -2,7 +2,6 @@
 # Copyright (c) 2025 Open Brain Institute
 # SPDX-License-Identifier: Apache-2.0
 
-import logging
 import time
 from urllib.parse import urljoin
 
@@ -23,7 +22,7 @@ class CustomBasePage:
 
     def go_to_page(self, page_url):
         url = self.base_url + page_url
-        print(f"CustomPage ________________base_url + page_url = {url}" )
+        print(f"INFO: pages/base_page.py base_url + page_url = {url}" )
         self.browser.get(url)
 
     def find_element(self, by_locator, timeout=10):
@@ -112,8 +111,8 @@ class CustomBasePage:
             button_elements = self.browser.find_elements(By.TAG_NAME, "button")
             for btn in button_elements:
                 js_link = btn.get_attribute("onclick")
-                if js_link and "http" in js_link:  # Extract links from JavaScript
-                    extracted_url = js_link.split("'")[1] if "'" in js_link else js_link  # Handle different formats
+                if js_link and "http" in js_link:
+                    extracted_url = js_link.split("'")[1] if "'" in js_link else js_link
                     full_url = urljoin(self.base_url, extracted_url) if not extracted_url.startswith(
                         "http") else extracted_url
                     links.add(full_url)
