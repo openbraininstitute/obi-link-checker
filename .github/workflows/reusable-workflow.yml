@@ -65,7 +65,7 @@ jobs:
       - name: Run Tests Based on Environment
         env:
           ENV_URL: ${{ vars.ENV_URL }}
-          ENV_NAME: ${{ vars.ENV_NAME }}
+          ENV_NAME: ${{ inputs.env }}
           OBI_USERNAME: ${{ secrets.OBI_USERNAME }}
           OBI_PASSWORD: ${{ secrets.OBI_PASSWORD }}
         run: |
