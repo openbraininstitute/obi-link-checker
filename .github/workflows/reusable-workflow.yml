@@ -1,0 +1,95 @@
+name: Deploy to Environment
+
+on:
+  workflow_call:
+    inputs:
+      env:
+        description: "The name of environment (eg. STAGING, PRODUCTION)"
+        required: true
+        type: string
+      artifact-name:
+        description: "The name of the artifact to download"
+        required: true
+        type: string
+
+jobs:
+  test:
+    timeout-minutes: 7
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.env }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+#      - name: Install required dependencies
+#        run: |
+#          sudo apt-get update
+#          sudo apt-get install -y firefox  -o Debug::pkgProblemResolver=true
+
+      # Installation of 'uv' is required
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      # This is temporary for debugging
+      - name: Verify repository contents
+        run: ls -la
+
+      - name: Set up virtual environment and install dependencies
+        run: |
+          uv venv -p 3.11 
+          python -m pip install --upgrade pip 
+          source .venv/bin/activate
+          uv pip install -r requirements.txt
+          ls -la
+
+      - name: Install Firefox
+        uses: browser-actions/setup-firefox@v1
+
+      # This is temporary for debugging
+      - name: Verify browser installation
+        run: |
+          firefox --version
+
+      # Create a directory for logs
+      - name: Create Logs Directory
+        run: mkdir -p latest_logs/errors
+
+      - name: Run Tests Based on Environment
+        env:
+          ENV_URL: ${{ vars.ENV_URL }}
+          ENV_NAME: ${{ inputs.env }}
+          OBI_USERNAME: ${{ secrets.OBI_USERNAME }}
+          OBI_PASSWORD: ${{ secrets.OBI_PASSWORD }}
+        run: |
+          echo "Running tests in $ENV_URL with Username $OBI_USERNAME"
+          echo "ENV_URL: $ENV_URL"  
+          echo "ENV_NAME: $ENV_NAME"
+          uv run pytest tests/test_links.py --env=$ENV_NAME --env_url=$ENV_URL \
+          -sv --headless --html=latest_logs/report_$ENV_NAME_firefox.html \
+            --self-contained-html --browser=firefox
+
+      # Upload test artifacts (screenshots) if failure
+      - name: Upload test artifacts (screenshots)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: error-screenshots
+          path: latest_logs/errors
+          if-no-files-found: warn
+
+      # Upload `broken_links.log` to GitHub Actions artifacts
+      - name: Upload Broken Links Log
+        uses: actions/upload-artifact@v4
+        with:
+          name: broken-links-log
+          path: broken_links.log
+          if-no-files-found: warn
+
