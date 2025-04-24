@@ -34,12 +34,15 @@ class TestLinks:
         """Logs in, scrapes all pages, and checks for broken links"""
         logging.info("🚀 Starting test: Checking for broken links.")
 
-        browser, wait, base_url = setup
+        browser, wait, base_url, lab_id, project_id = setup
         home_page = HomePage(browser, wait, base_url, logger)
-        dynamic_pages = home_page.pages
+        print(f"DEBUG: Using lab_id={lab_id}, project_id={project_id}")
+        dynamic_pages = home_page.get_pages(lab_id, project_id)
+        logger.info(f"Explore page is loaded, {browser.current_url}")
         all_links = set()
         soup = None
         link_sources = {}
+
 
         for page in dynamic_pages:
             print(f"\n🌍 Testing page: {page}")

@@ -17,8 +17,9 @@ from selenium.webdriver.safari.service import Service as SafariService
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.firefox import GeckoDriverManager
+from selenium.webdriver.support import expected_conditions as EC
 
-
+from pages.landing_page import LandingPage
 from pages.login_page import LoginPage
 from util.util_base import load_config
 
@@ -26,97 +27,120 @@ from util.util_base import load_config
 def pytest_addoption(parser):
     """Allows running tests in headless mode with --headless flag."""
     parser.addoption("--headless", action="store_true", help="Run tests in headless mode")
-    parser.addoption("--browser", action="store", default="chrome", help="Choose browser: chrome, firefox, safari")
+    parser.addoption("--browser-name", action="store", default="chrome", help="Choose browser: chrome, firefox, safari")
     parser.addoption("--env", action="store", default="staging", help="Choose environment: staging, production")
     parser.addoption("--env_url", action="store", help="Base URL of the environment")
 
+@pytest.fixture(scope="session")
+def test_config(pytestconfig):
+    """Gets credentials and IDS returns the correct environment-specific settings."""
+    username = os.getenv("OBI_USERNAME")
+    password = os.getenv("OBI_PASSWORD")
+    env = pytestconfig.getoption("env")
+
+    if not username or not password:
+        raise ValueError("Username or password is missing in the configuration!")
+
+    if env =="staging":
+        base_url = "https://staging.openbraininstitute.org"
+        lab_url = f"{base_url}/app/virtual-lab"
+        lab_id = os.getenv("LAB_ID_STAGING")
+        project_id = os.getenv("PROJECT_ID_STAGING")
+    elif env == "production":
+        base_url = "https://www.openbraininstitute.org"
+        lab_url = f"{base_url}/app/virtual-lab"
+        lab_id = os.getenv("LAB_ID_PRODUCTION")
+        project_id = os.getenv("PROJECT_ID_PRODUCTION")
+    else:
+        raise ValueError(f"Invalid environment: {env}")
+
+    return {
+        "username": username,
+        "password": password,
+        "base_url": base_url,
+        "lab_url": lab_url,
+        "lab_id": lab_id,
+        "project_id": project_id,
+    }
 
 @pytest.fixture(scope="class", autouse=True)
-def setup(request, pytestconfig):
+def setup(request, pytestconfig, test_config):
     """Fixture to set up the WebDriver."""
-    browser_name = pytestconfig.getoption("--browser")
-    headless = pytestconfig.getoption("--headless")
-    environment = pytestconfig.getoption("--env")
-    base_url = pytestconfig.getoption("--env_url")
+    environment = pytestconfig.getoption("env")
+    browser_name = pytestconfig.getoption("--browser-name")
+    base_url = test_config["base_url"]
+    lab_id = test_config["lab_id"]
+    project_id = test_config["project_id"]
 
-    if not base_url:
-        if environment == "staging":
-            base_url = "https://staging.openbraininstitute.org/app/virtual-lab"
-        elif environment == "production":
-            base_url = "https://openbraininstitute.org/app/virtual-lab"
-        else:
-            raise ValueError(f"Invalid environment: {environment}. Choose 'staging' or 'production'.")
-
-    request.cls.base_url = base_url
+    print(f"Starting tests in {environment.upper()} mode.")
+    print(f"Base URL: {base_url}")
 
     if browser_name == "chrome":
         options = ChromeOptions()
-        if headless:
+        if pytestconfig.getoption("--headless"):
             options.add_argument("--headless")
-            options.add_argument("--disable-gpu")
-            options.add_argument("--window-size=1920x1080")
-        driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
-
+            options.add_argument("--ignore-certificate-errors")
+        browser = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
     elif browser_name == "firefox":
         options = FirefoxOptions()
-        if headless:
+        if pytestconfig.getoption("--headless"):
             options.add_argument("--headless")
-        driver = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()), options=options)
-
-    elif browser_name == "safari":
-        if headless:
-            raise ValueError("Safari does not support headless mode.")
-        options = SafariOptions()
-        driver = webdriver.Safari(service=SafariService(), options=options)
-
+        browser = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()), options=options)
     else:
         raise ValueError(f"Unsupported browser: {browser_name}")
 
-    driver.set_page_load_timeout(60)
-    wait = WebDriverWait(driver, 20)
+    browser.set_page_load_timeout(60)
+    wait = WebDriverWait(browser, 20)
 
-    # driver.maximize_window()
-    driver.delete_all_cookies()
-
-    request.cls.browser = driver
-    request.cls.wait = wait
     request.cls.base_url = base_url
+    request.cls.lab_id = lab_id
+    request.cls.project_id = project_id
 
-    yield driver, wait, base_url
+    request.cls.browser = browser
+    request.cls.wait = wait
 
-    driver.quit()
+    yield browser, wait, base_url, lab_id, project_id
 
+    if browser is not None:
+        browser.quit()
 
 @pytest.fixture(scope="function")
-def navigate_to_login(setup, logger):
+def navigate_to_landing_page(setup, logger, test_config):
+    """Fixture to open and verify the OBI Landing Page before login."""
+    browser, wait, base_url, lab_id, project_id = setup
+    landing_page = LandingPage(browser, wait, base_url, test_config["base_url"], logger)
+
+    landing_page.go_to_landing_page()
+    print(f"DEBUG NAVIGATE TO LANDING PAGE function: {browser.current_url}")
+    yield landing_page
+
+@pytest.fixture(scope="function")
+def navigate_to_login(setup, logger, request, test_config):
     """Fixture that navigates to the login page"""
-    browser, wait, base_url = setup
-    login_page = LoginPage(browser, wait, base_url, logger)
-    print(f"INFO: Running withing conftest.py {login_page}")
-    target_url = login_page.navigate_to_homepage()
-    print(f"INFO: from contest.py Navigated to: {target_url}")
-    login_page.wait_for_condition(
-        lambda driver: "openid-connect" in driver.current_url,
-        timeout=30,
-        message="Timed out waiting for OpenID login page."
+    browser, wait, lab_url, lab_id, project_id = setup
+    print(f"DEBUG NAVIGATE TO LOGIN function: {browser.current_url}")
+
+    landing_page = LandingPage(browser, wait, test_config["base_url"], test_config["lab_url"], logger)
+    landing_page.go_to_landing_page()
+    print(f"******DEBUG: NAVIGATE TO LOGIN CONFTEST, current URL: {browser.current_url}")
+    landing_page.click_go_to_lab()
+    print(f"INFO: After clicking go to lab, current URL: {browser.current_url}")
+
+    WebDriverWait(browser, 60).until(
+        EC.url_contains("openid-connect"),
+        message="Timed out waiting for OpenID login page"
     )
-    assert "openid-connect" in browser.current_url, f"Did not reach OpenID login page. Current URL: {browser.current_url}"
-
-    print("DEBUG: Returning login_page from navigate_to_login")
-    return login_page
-
+    print("DEBUG: Returning login_page from conftest.py/navigate_to_login")
+    return LoginPage(browser, wait, test_config["lab_url"], logger)
 
 @pytest.fixture(scope="function")
-def login(setup, navigate_to_login, logger):
+def login(setup, navigate_to_login, test_config, logger):
     """Fixture to log in and ensure user is authenticated."""
-    browser, wait, base_url = setup
+    browser, wait, lab_url, lab_id, project_id = setup
     login_page = navigate_to_login
 
-    config = load_config()
-    if not config:
-        raise ValueError("Failed to load configuration")
-    username = config.get('username')
-    password = config.get('password')
+    username = test_config.get("username")
+    password = test_config.get("password")
 
     if not username or not password:
         raise ValueError("Username or password is missing in the configuration!")
@@ -124,9 +148,21 @@ def login(setup, navigate_to_login, logger):
     login_page.perform_login(username, password)
     login_page.wait_for_login_complete()
     print("Login successful. Current URL:", browser.current_url)
+    login_page = LoginPage(browser, wait, lab_url, logger)
+    modal_terms_and_conditions = login_page.terms_modal()
+    assert modal_terms_and_conditions.is_displayed(), "The TOR modal is not displayed for 1st time users"
+
+    if modal_terms_and_conditions:
+        print("Modal appeared for first-time users")
+        modal_tor_link = login_page.terms_modal_link()
+        logger.info('Terms and conditions links is displayed')
+        modal_continue_btn = login_page.terms_modal_continue()
+        modal_continue_btn.click()
+        logger.info("Continue button is clicked")
+    else:
+        print("Modal did NOT appear")
     yield browser, wait
     login_page.browser.delete_all_cookies()
-
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item):
