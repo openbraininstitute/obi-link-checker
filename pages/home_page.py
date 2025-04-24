@@ -13,8 +13,8 @@ class HomePage(CustomBasePage):
     def __init__(self, browser, wait, base_url, logger):
         super().__init__(browser, wait, base_url, logger)
         self.logger = logging.getLogger(__name__)
-        self.lab_id = "f1a0fd86-934b-470f-b87a-7a4146af8ffa"
-        self.project_id = "92b60850-389d-42d8-aba4-51c3af7bcad6"
+        self.lab_id = "d8f2d02a-05b9-4e25-8f68-45b7d8818703"
+        self.project_id = "8fd987ca-8f05-497b-939f-c77027ddd004"
         self.pages = get_dynamic_pages(base_url,self.lab_id, self.project_id)
         self.logger = logger
 
