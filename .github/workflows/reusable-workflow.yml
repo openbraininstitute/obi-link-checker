@@ -29,11 +29,6 @@ jobs:
         with:
           python-version: '3.11'
 
-#      - name: Install required dependencies
-#        run: |
-#          sudo apt-get update
-#          sudo apt-get install -y firefox  -o Debug::pkgProblemResolver=true
-
       # Installation of 'uv' is required
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -91,7 +86,7 @@ jobs:
       - name: Upload Broken Links Log
         uses: actions/upload-artifact@v4
         with:
-          name: broken-links-log
-          path: broken_links.log
+          name: broken-links-log-${{ github.run_id }}
+          path: logs/broken_links_${{ github.run_id }}.log
           if-no-files-found: warn
 
