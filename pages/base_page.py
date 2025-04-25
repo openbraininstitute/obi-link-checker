@@ -22,14 +22,7 @@ class CustomBasePage:
 
     def go_to_page(self, page_url):
         url = self.base_url + page_url
-        print(f"INFO: pages/base_page.py base_url + page_url = {url}" )
         self.browser.get(url)
-
-
-    # def go_to_page(self, page_url):
-    #     url = self.base_url + page_url
-    #     print(f"INFO: pages/base_page.py base_url + page_url = {url}" )
-    #     self.browser.get(url)
 
     def find_element(self, by_locator, timeout=10):
         return self.wait.until(EC.presence_of_element_located(by_locator), timeout)

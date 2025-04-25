@@ -30,9 +30,6 @@ class LandingPage(HomePage):
                 self.wait.sleep(delay)
         raise TimeoutException("❌ Failed to load Landing Page after multiple attempts.")
 
-    def go_to_lab(self, timeout=10):
-        return self.find_element(LandingLocators.GOTO_LAB, timeout=timeout)
-
     def click_go_to_lab(self):
         try:
             go_to_lab = self.find_element(LandingLocators.GOTO_LAB)

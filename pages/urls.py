@@ -1,6 +1,15 @@
 
 def get_dynamic_pages(base_url, lab_id, project_id):
     return [
+        f"{base_url}",
+        f"{base_url}/about",
+        f"{base_url}/mission",
+        f"{base_url}/news",
+        f"{base_url}/pricing",
+        f"{base_url}/team",
+        f"{base_url}/resources",
+        f"{base_url}/terms",
+        f"{base_url}/privacy",
         f"{base_url}/app/virtual-lab/lab/{lab_id}/overview",
         f"{base_url}/app/virtual-lab/lab/{lab_id}/projects",
         f"{base_url}/app/virtual-lab/lab/{lab_id}/project/{project_id}/home",

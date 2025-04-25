@@ -5,6 +5,7 @@
 import logging
 import os
 import sys
+import time
 
 import pytest
 from selenium import webdriver
@@ -73,7 +74,6 @@ def setup(request, pytestconfig, test_config):
     project_id = test_config["project_id"]
 
     print(f"Starting tests in {environment.upper()} mode.")
-    print(f"Base URL: {base_url}")
 
     if browser_name == "chrome":
         options = ChromeOptions()
@@ -108,29 +108,23 @@ def setup(request, pytestconfig, test_config):
 def navigate_to_landing_page(setup, logger, test_config):
     """Fixture to open and verify the OBI Landing Page before login."""
     browser, wait, base_url, lab_id, project_id = setup
-    landing_page = LandingPage(browser, wait, base_url, test_config["base_url"], logger)
-
+    landing_page = LandingPage(browser, wait, test_config["base_url"], test_config["lab_url"], logger)
     landing_page.go_to_landing_page()
-    print(f"DEBUG NAVIGATE TO LANDING PAGE function: {browser.current_url}")
+
     yield landing_page
 
 @pytest.fixture(scope="function")
-def navigate_to_login(setup, logger, request, test_config):
+def navigate_to_login(setup, navigate_to_landing_page, logger, request, test_config):
     """Fixture that navigates to the login page"""
     browser, wait, lab_url, lab_id, project_id = setup
-    print(f"DEBUG NAVIGATE TO LOGIN function: {browser.current_url}")
-
-    landing_page = LandingPage(browser, wait, test_config["base_url"], test_config["lab_url"], logger)
-    landing_page.go_to_landing_page()
-    print(f"******DEBUG: NAVIGATE TO LOGIN CONFTEST, current URL: {browser.current_url}")
+    landing_page = navigate_to_landing_page
+    print("went from landing page to login page, going to wait for 10 secs")
     landing_page.click_go_to_lab()
-    print(f"INFO: After clicking go to lab, current URL: {browser.current_url}")
 
     WebDriverWait(browser, 60).until(
         EC.url_contains("openid-connect"),
         message="Timed out waiting for OpenID login page"
     )
-    print("DEBUG: Returning login_page from conftest.py/navigate_to_login")
     return LoginPage(browser, wait, test_config["lab_url"], logger)
 
 @pytest.fixture(scope="function")
@@ -177,18 +171,18 @@ def pytest_runtest_makereport(item):
     report = outcome.get_result()
     extra = getattr(report, 'extra', [])
 
-    if report.when == 'call' or report.when == "setup":
+    if report.when in ("call", "setup"):
         xfail = hasattr(report, 'wasxfail')
         if (report.skipped and xfail) or (report.failed and not xfail):
-            print("Test failed - handling it")
+            print("Test failed - caputiring screenshot")
 
             project_root = os.path.abspath(os.path.dirname(__file__))
-            error_logs_dir = os.path.join(project_root, "latest_logs", "errors")
-            os.makedirs(error_logs_dir, exist_ok=True)
+            screenshots_dir = os.path.join(project_root, "latest_logs", "errors")
+            os.makedirs(screenshots_dir, exist_ok=True)
 
-            test_name = report.nodeid.replace("::", "_").split("/")[-1]
-            file_name = os.path.join(error_logs_dir, test_name + ".png")
-            print(f"Intended screenshot path: {file_name}")
+            test_name = report.nodeid.replace("::", "_").replace("/", "_")
+            screenshot_path = os.path.join(screenshots_dir, f"{test_name}.png")
+            print(f"Screenshot path: {screenshot_path}")
 
             browser = None
             if hasattr(item, "cls"):
@@ -200,15 +194,17 @@ def pytest_runtest_makereport(item):
             if browser:
                 try:
                     print("Browser object found - making screenshot")
-                    _capture_screenshot(file_name, browser)
-                    if os.path.exists(file_name):
-                        print(f"Screenshot successfully saved at: {file_name}")
-                        html = ('<div><img src="%s" alt="screenshot" '
-                                'style="width:304px;height:228px;" onclick="window.open(this.src)" '
-                                'align="right"/></div>') % os.path.relpath(file_name)
+                    _capture_screenshot(screenshot_path, browser)
+                    if os.path.exists(screenshot_path):
+                        print(f"Screenshot successfully saved at: {screenshot_path}")
+                        html = (
+                                f'<div><img src="{os.path.relpath(screenshot_path)}"'
+                                f'alt="screenshot" style="width:304px;height:228px;"'
+                                f'onclick="window.open(this.src)" '
+                                'align="right"/></div>') % os.path.relpath(screenshot_path)
                         extra.append(pytest_html.extras.html(html))
                     else:
-                        print(f"Screenshot not found at: {file_name}")
+                        print(f"Screenshot not found at: {screenshot_path}")
                 except Exception as e:
                     print(f"Exception occurred while capturing screenshot: {e}")
             else:
@@ -228,7 +224,6 @@ def _capture_screenshot(name, browser):
         print(f"Creating error  directory at:{os.path.dirname(name)}")
         os.makedirs(os.path.dirname(name), exist_ok=True)
         print(f"Saving screenshot to: {name}")
-        # browser.get_full_page_screenshot_as_file(name)
         browser.save_screenshot(name)
         print(f"Screenshot captured: {name}")
     except Exception as e:
@@ -241,10 +236,11 @@ def logger():
     logger.setLevel(logging.DEBUG)
 
     project_root = os.path.abspath(os.path.dirname(__file__))
-    allure_reports_dir = os.path.join(project_root, "allure_reports")
-    log_file_path = os.path.join(allure_reports_dir, "report.log")
+    logs_dir = os.path.join(project_root, "..", "logs")
+    os.makedirs(logs_dir, exist_ok=True)
 
-    os.makedirs(allure_reports_dir, exist_ok=True)
+
+    log_file_path = os.path.join(logs_dir, "error.log")
 
     # Remove existing handlers to prevent duplicates
     if logger.hasHandlers():
