@@ -91,3 +91,12 @@ class LoginPage(CustomBasePage):
             self.browser.execute_script("arguments[0].style.display = 'block';", element)
         if not element.is_enabled():
             raise Exception(f"Element {element} is not enabled for interaction.")
+
+    def terms_modal(self):
+        return self.find_element(LoginPageLocators.MODAL_TOR)
+
+    def terms_modal_link(self):
+        return self.find_element(LoginPageLocators.MODAL_HREF_TERMS)
+
+    def terms_modal_continue(self):
+        return self.find_element(LoginPageLocators.MODAL_CONTINUE_BTN)

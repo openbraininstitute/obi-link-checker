@@ -15,37 +15,69 @@ from selenium.webdriver.support import expected_conditions as EC
 
 
 from pages.home_page import HomePage
+from tests.conftest import navigate_to_login
+
+SIGNIFICANT_TAGS = ["tr", "td", "div", "span", "li", "section", "article", "ul", "ol"]
+
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Referer": "",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Connection": "keep-alive",
+}
+
+def get_element_context(soup, href):
+    """Extracts the parent and text context of a link in a BeautifulSoup document."""
+    if not soup:
+        return "[Unknown Element] - [No text]"
+
+    element = soup.find("a", href=href)
+    if not element:
+        return "[Unknown Element] - [No text]"
+
+    parent = element.find_parent(lambda tag: tag.has_attr("class") and any(cls.startswith("ant-table-row") for cls in tag["class"]))
+    if not parent:
+        for tag_name in SIGNIFICANT_TAGS:
+            parent = element.find_parent(tag_name)
+            if parent:
+                break
+
+    if parent:
+        return f"<{parent.name} class='{parent.get('class')}'> - {parent.get_text(strip=True)}"
+    return "[Unknown Element] - [No text]"
 
 
-def get_parent_element_text(soup, broken_link):
-    """Finds the parent element of a broken link and extracts meaningful text."""
-    element = soup.find("a", href=broken_link)
-
-    if element:
-        parent = element.find_parent(["tr", "td", "div", "span", "li"])
-        element_text = parent.get_text(strip=True) if parent else "[No text]"
-        return f"Found in: {parent.name if parent else '[Unknown Element]'} - {element_text}"
-
-    return "Found in: [Unknown Element] - [No text]"
-
-@pytest.mark.usefixtures("setup", "login", "logger")
+@pytest.mark.usefixtures("setup", "logger", "login")
 class TestLinks:
-    def test_broken_links(self, setup, logger):
+
+    def test_broken_links(self, setup, logger, login):
         """Logs in, scrapes all pages, and checks for broken links"""
         logging.info("🚀 Starting test: Checking for broken links.")
-
-        browser, wait, base_url = setup
+        browser, wait, base_url, lab_id, project_id = setup
         home_page = HomePage(browser, wait, base_url, logger)
-        dynamic_pages = home_page.pages
-        all_links = set()
-        soup = None
-        link_sources = {}
 
-        for page in dynamic_pages:
-            print(f"\n🌍 Testing page: {page}")
-            logging.info(f"🌍 Testing page: {page}")
+        pages = home_page.get_pages(lab_id, project_id)
+        logger.info(f"Page is loaded, {browser.current_url}")
+
+        landing_pages = [page for page in pages if "/app/virtual-lab" not in page]
+        platform_pages = [page for page in pages if "/app/virtual-lab" in page]
+        all_links, link_sources = {}, {}
+
+        for group, label in [(landing_pages, "LANDING"), (platform_pages, "AUTHENTICATED")]:
+            self.collect_links_from_pages(group, label, browser, base_url, wait, home_page, all_links, link_sources)
+
+        assert all_links, "❌ No links found on the website."
+        print(f"🔗 Found {len(all_links)} unique links")
+
+        self.validate_links(base_url, all_links, link_sources)
+
+    def collect_links_from_pages(self, pages, context, browser, base_url, wait, home_page, all_links, link_sources):
+        for page in pages:
+            logging.info(f"{context} Testing page: {page}")
             browser.get(page)
-            time.sleep(2)  # Allow time for page load
+            time.sleep(2)
             WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
 
             soup = BeautifulSoup(browser.page_source, "html.parser")
@@ -53,94 +85,56 @@ class TestLinks:
 
             for link in page_links:
                 full_link = urljoin(base_url, link)
+                all_links[full_link] = soup
                 link_sources[full_link] = page
-            all_links.update(page_links)
 
-        assert all_links, "❌ No links found on the website."
-        print(f"🔗 FROM TESTLINKS***** Found {len(all_links)} links")
+    def validate_links(self, base_url, all_links, link_sources):
+        session = requests.Session()
+        HEADERS["Referer"] = base_url
+        session.headers.update(HEADERS)
+
+        broken_count = valid_count = 0
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        broken_count = 0
-        valid_count = 0
+        with open("broken_links.log", "w", encoding="utf-8") as broken_log, \
+                open("working_links.log", "w", encoding="utf-8") as working_log:
 
-        with open("broken_links.log", "w", encoding="utf-8") as broken_links_log, \
-             open("working_links.log", "w", encoding="utf-8") as working_links_log:
-
-            session = requests.Session()
-            session.headers.update({
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            })
-
-            for link in all_links:
-                full_link = urljoin(base_url, link)
+            for full_link, soup in all_links.items():
                 source_page = link_sources.get(full_link, "[Unknown Page]")
-                logging.info(f"➡️ Checking link: {full_link} (Found on: {source_page})")
-
-                try:
-                    response = session.get(
-                        full_link,
-                        allow_redirects=True,
-                        timeout=5,
-                        headers={
-                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                            "Referer": base_url,
-                            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
-                            "Accept-Encoding": "gzip, deflate, br",
-                            "Accept-Language": "en-US,en;q=0.9",
-                            "Connection": "keep-alive",
-                        },
-                    )
-                    status_code = response.status_code
-
-                except requests.RequestException as e:
-                    logging.error(f"❌ Request failed for {full_link}: {str(e)}")
-                    status_code = 500
-
-                if status_code is None:
-                    status_code = 500
-
-                found_element = soup.find(href=link)
-                element_text = "[Unknown Element] - [No text]"
-
-                if found_element:
-                    parent_element = found_element.find_parent(lambda tag: tag.has_attr("class") and
-                                                                           any(cls.startswith("ant-table-row") for
-                                                                               cls in tag["class"]))
-
-                    if not parent_element:
-                        significant_tags = ["tr", "li", "div", "section", "article", "td", "ul", "ol"]
-                        for tag in significant_tags:
-                            parent_element = found_element.find_parent(tag)
-                            if parent_element:
-                                break
-
-                    if parent_element:
-                        element_text = f"<{parent_element.name} class='{parent_element.get('class')}'> - {parent_element.get_text(strip=True)}"
+                status_code = self.get_status(session, full_link)
+                context_text = get_element_context(soup, full_link)
 
                 if status_code == 403:
-                    logging.warning(f"⚠️ Forbidden Link (403): {full_link} | Page: {source_page}")
-                    broken_links_log.write(f"{timestamp} | {full_link} → Status 403 | Page: {source_page}\n")
-                    print(f"⚠️ Forbidden link detected: {full_link} | Page: {source_page}")
-
-                elif status_code >= 400:
-                    logging.warning(
-                        f"❌ Broken Link: {full_link} → Status {status_code} | Found in: {element_text} | Page: {source_page}")
-                    broken_links_log.write(
-                        f"{timestamp} | {full_link} → Status {status_code} | Found in: {element_text} | Page: {source_page}\n")
-                    print(f"❌ Broken link detected: {full_link} | Page: {source_page} | Element: {element_text}")
+                    self.log_result(broken_log, full_link, status_code, source_page, context_text, "⚠️ Forbidden")
                     broken_count += 1
-
+                elif status_code >= 400:
+                    self.log_result(broken_log, full_link, status_code, source_page, context_text, "❌ Broken")
+                    broken_count += 1
                 else:
-                    logging.info(f"✅ Working Link: {full_link} | Page: {source_page}")
-                    working_links_log.write(f"{timestamp} | {full_link} → Status {status_code} | Page: {source_page}\n")
-                    print(f"✅ Valid link detected: {full_link} | Page: {source_page}")
+                    self.log_result(working_log, full_link, status_code, source_page, None, "✅ Working")
                     valid_count += 1
 
-        # Print Summary:
+        self.print_summary(len(all_links), valid_count, broken_count)
+
+    def get_status(self, session, url):
+        try:
+            return session.get(url, allow_redirects=True, timeout=5).status_code
+        except requests.RequestException as e:
+            logging.error(f"❌ Request failed for {url}: {str(e)}")
+            return 500
+
+    def log_result(self, log_file, link, status, page, context=None, label=""):
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        message = f"{timestamp} | {link} → Status {status} | Page: {page}"
+        if context:
+            message += f" | Found in: {context}"
+        print(f"{label} {message}")
+        logging.info(message)
+        log_file.write(message + "\n")
+
+    def print_summary(self, total, valid, broken):
         print("\n📊 Test Summary:")
-        print(f"🔗 Total links found: {len(all_links)}")
-        print(f"✅ Valid links: {valid_count}")
-        print(f"❌ Broken links: {broken_count}")
-
+        print(f"🔗 Total links: {total}")
+        print(f"✅ Valid: {valid}")
+        print(f"❌ Broken: {broken}")
         logging.info("✅ Test completed. Check broken_links.log and working_links.log for details.")
-
