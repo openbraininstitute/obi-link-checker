@@ -60,7 +60,9 @@ jobs:
 
       # Create a directory for logs
       - name: Create Logs Directory
-        run: mkdir -p latest_logs/errors
+        run: |
+          mkdir -p logs/errors
+          ls -la logs   
 
       - name: Run Tests Based on Environment
         env:
