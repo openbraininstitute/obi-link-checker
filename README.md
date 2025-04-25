@@ -17,7 +17,7 @@ Ensure you have the following installed:
 1. Clone this repository:
 
 ```
-git clone git@github.com:ayimaok/webpage-link-checker.git
+git clone git@github.com:openbraininstitute/obi-link-checker.git
 cd website-link-checker
 ```
 

@@ -13,8 +13,6 @@ from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from selenium.webdriver.firefox.service import Service as FirefoxService
-from selenium.webdriver.safari.options import Options as SafariOptions
-from selenium.webdriver.safari.service import Service as SafariService
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.firefox import GeckoDriverManager
@@ -22,7 +20,6 @@ from selenium.webdriver.support import expected_conditions as EC
 
 from pages.landing_page import LandingPage
 from pages.login_page import LoginPage
-from util.util_base import load_config
 
 
 def pytest_addoption(parser):
@@ -118,7 +115,6 @@ def navigate_to_login(setup, navigate_to_landing_page, logger, request, test_con
     """Fixture that navigates to the login page"""
     browser, wait, lab_url, lab_id, project_id = setup
     landing_page = navigate_to_landing_page
-    print("went from landing page to login page, going to wait for 10 secs")
     landing_page.click_go_to_lab()
 
     WebDriverWait(browser, 60).until(

@@ -15,10 +15,8 @@ class LoginPage(CustomBasePage):
 
     def navigate_to_homepage(self):
         self.browser.delete_all_cookies()
-        print(self.base_url, "PRINTING BASE_URL FROM login_page")
         target_url = self.base_url
         self.browser.get(target_url)
-        print(f"INFO: From login_page.py navigate_to_login method.  {target_url}")
         WebDriverWait(self.browser, 30).until(
             lambda d: "openid-connect" in d.current_url or "auth" in d.current_url
         )

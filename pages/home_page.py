@@ -20,13 +20,11 @@ class HomePage(CustomBasePage):
 
     def get_pages(self, lab_id, project_id):
         """Returns list of dynamic pages based on lab/project IDs."""
-        # return get_dynamic_pages(self.base_url)
         return get_dynamic_pages(self.base_url, lab_id, project_id)
 
     def go_to_home_page(self):
         """Navigates to the homepage."""
         self.go_to_page("")
-        print(f"************HomePage - {self.browser.current_url}")
         self.logger.info("Navigated to homepage.")
 
     def login_and_scrape(self, login_fixture):
