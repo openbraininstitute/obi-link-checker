@@ -174,10 +174,10 @@ def pytest_runtest_makereport(item):
     if report.when in ("call", "setup"):
         xfail = hasattr(report, 'wasxfail')
         if (report.skipped and xfail) or (report.failed and not xfail):
-            print("Test failed - caputiring screenshot")
+            print("Test failed - capturing screenshot")
 
             project_root = os.path.abspath(os.path.dirname(__file__))
-            screenshots_dir = os.path.join(project_root, "latest_logs", "errors")
+            screenshots_dir = os.path.join(project_root, "..", "screenshots", "errors")
             os.makedirs(screenshots_dir, exist_ok=True)
 
             test_name = report.nodeid.replace("::", "_").replace("/", "_")

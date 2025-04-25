@@ -75,7 +75,7 @@ jobs:
           echo "ENV_URL: $ENV_URL"  
           echo "ENV_NAME: $ENV_NAME"
           uv run pytest tests/test_links.py --env=$ENV_NAME --env_url=$ENV_URL \
-          -sv --headless --html=latest_logs/report_$ENV_NAME_firefox.html \
+          -sv --headless --html=logs/report_${ENV_NAME}_firefox.html \
             --self-contained-html --browser=firefox
 
       # Upload test artifacts (screenshots) if failure
@@ -84,7 +84,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: error-screenshots
-          path: latest_logs/errors
+          path: logs/errors
           if-no-files-found: warn
 
       # Upload `broken_links.log` to GitHub Actions artifacts
