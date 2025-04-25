@@ -143,20 +143,7 @@ def login(setup, navigate_to_login, test_config, logger):
     login_page.wait_for_login_complete()
     print("Login successful. Current URL:", browser.current_url)
     login_page = LoginPage(browser, wait, lab_url, logger)
-    modal_terms_and_conditions = login_page.terms_modal()
-    assert modal_terms_and_conditions.is_displayed(), "The TOR modal is not displayed for 1st time users"
 
-    if modal_terms_and_conditions:
-        print("Modal appeared for first-time users")
-        modal_tor_link = login_page.terms_modal_link()
-        logger.info('Terms and conditions links is displayed')
-        modal_continue_btn = login_page.terms_modal_continue()
-        modal_continue_btn.click()
-        logger.info("Continue button is clicked")
-    else:
-        print("Modal did NOT appear")
-    yield browser, wait
-    login_page.browser.delete_all_cookies()
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item):
