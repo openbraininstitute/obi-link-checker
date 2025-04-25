@@ -76,7 +76,7 @@ jobs:
           echo "ENV_NAME: $ENV_NAME"
           uv run pytest tests/test_links.py --env=$ENV_NAME --env_url=$ENV_URL \
           -sv --headless --html=logs/report_${ENV_NAME}_firefox.html \
-            --self-contained-html --browser=firefox
+            --self-contained-html --browser-name=firefox
 
       # Upload test artifacts (screenshots) if failure
       - name: Upload test artifacts (screenshots)
