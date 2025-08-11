@@ -11,4 +11,4 @@ class LandingLocators:
     BIG_IMG1 = (By.XPATH, "(//div[starts-with(@class,'SanityContentPreview_vignette')])[1]")
     BIG_IMG2 = (By.XPATH, "(//div[starts-with(@class,'SanityContentPreview_vignette')])[2]")
     BIG_IMG3 = (By.XPATH, "(//div[starts-with(@class,'SanityContentPreview_vignette')])[3]")
-    GOTO_LAB = (By.XPATH, "//*[contains(@class, 'Menu_loginButton__')]")
+    GOTO_LAB = (By.XPATH, "//a[@href='/app/virtual-lab']")
