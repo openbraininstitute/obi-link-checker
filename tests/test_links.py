@@ -100,6 +100,10 @@ class TestLinks:
                 open("working_links.log", "w", encoding="utf-8") as working_log:
 
             for full_link, soup in all_links.items():
+                if "@" in full_link:
+                    logging.info(f"Skipping links with '@': {full_link}")
+                    continue
+
                 source_page = link_sources.get(full_link, "[Unknown Page]")
                 status_code = self.get_status(session, full_link)
                 context_text = get_element_context(soup, full_link)
