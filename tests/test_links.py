@@ -1,6 +1,7 @@
 # Copyright (c) 2024 Blue Brain Project/EPFL
 # Copyright (c) 2025 Open Brain Institute
 # SPDX-License-Identifier: Apache-2.0
+import re
 
 import pytest
 import requests
@@ -15,7 +16,6 @@ from selenium.webdriver.support import expected_conditions as EC
 
 
 from pages.home_page import HomePage
-from tests.conftest import navigate_to_login
 
 SIGNIFICANT_TAGS = ["tr", "td", "div", "span", "li", "section", "article", "ul", "ol"]
 
@@ -27,6 +27,26 @@ HEADERS = {
     "Accept-Language": "en-US,en;q=0.9",
     "Connection": "keep-alive",
 }
+
+NOT_FOUND_PATTERNS = [
+    r"\b404\b",
+    r"\bpage not found\b",
+    r"\bnot found\b",
+    r"\bthis page could not be found\b",
+    r"\bwe (couldn['’]t|can[’']t) find (that|the) page\b",
+    r"\bdoesn[’']t exist\b",
+]
+NOT_FOUND_REGEX = re.compile("|".join(NOT_FOUND_PATTERNS), re.IGNORECASE)
+
+def is_content_404_ui(soup_or_text):
+    """Check if the content contains a 404/page-not-found message."""
+    text = soup_or_text.get_text(separator=" ", strip=True) if hasattr(soup_or_text, "get_text") else soup_or_text
+    # normalize text
+    text = text.lower()
+    text = text.replace("‘", "'").replace("’", "'").replace("“", '"').replace("”", '"')
+    text = " ".join(text.split())  # normalize whitespace
+    return bool(re.search("|".join([p.lower() for p in NOT_FOUND_PATTERNS]), text))
+
 
 def get_element_context(soup, href):
     """Extracts the parent and text context of a link in a BeautifulSoup document."""
@@ -63,38 +83,63 @@ class TestLinks:
 
         landing_pages = [page for page in pages if "/app/virtual-lab" not in page]
         platform_pages = [page for page in pages if "/app/virtual-lab" in page]
+
         all_links, link_sources = {}, {}
+        content_404s = []
 
         for group, label in [(landing_pages, "LANDING"), (platform_pages, "AUTHENTICATED")]:
-            self.collect_links_from_pages(group, label, browser, base_url, wait, home_page, all_links, link_sources)
+            self.collect_links_from_pages(
+                group, label, browser, base_url, wait, home_page,
+                all_links, link_sources, content_404s
+            )
 
         assert all_links, "❌ No links found on the website."
         print(f"🔗 Found {len(all_links)} unique links")
 
-        self.validate_links(base_url, all_links, link_sources)
+        valid_count, broken_count = self.validate_links(base_url, all_links, link_sources, content_404s)
+        self.print_summary(len(all_links), valid_count, broken_count, content_404s)
 
-    def collect_links_from_pages(self, pages, context, browser, base_url, wait, home_page, all_links, link_sources):
+        if content_404s:
+            print("\n🚨 Content 404 Errors Found:")
+            for err in content_404s:
+                print(err)
+            raise AssertionError(f"Found {len(content_404s)} content 404 pages")
+
+    def collect_links_from_pages(self, pages, context, browser, base_url, wait, home_page, all_links, link_sources,
+                                 content_404s):
         for page in pages:
             logging.info(f"{context} Testing page: {page}")
+
+            status = self.check_page_status(page)
+            if status >= 400:
+                raise AssertionError(f"❌ Page {page} returned HTTP {status} before Selenium navigation.")
+
+            all_links[page] = None
+            link_sources[page] = f"{context} PAGE ITSELF"
+
             browser.get(page)
             time.sleep(2)
             WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
 
             soup = BeautifulSoup(browser.page_source, "html.parser")
-            page_links = home_page.get_all_links()
 
+            if is_content_404_ui(soup):
+                content_404s.append(f"❌ Detected 404 content on {page}")
+                continue
+
+            page_links = home_page.get_all_links()
             for link in page_links:
                 full_link = urljoin(base_url, link)
                 all_links[full_link] = soup
                 link_sources[full_link] = page
 
-    def validate_links(self, base_url, all_links, link_sources):
+    def validate_links(self, base_url, all_links, link_sources, content_404s):
         session = requests.Session()
         HEADERS["Referer"] = base_url
         session.headers.update(HEADERS)
 
-        broken_count = valid_count = 0
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        broken_count = 0
+        valid_count = 0
 
         with open("broken_links.log", "w", encoding="utf-8") as broken_log, \
                 open("working_links.log", "w", encoding="utf-8") as working_log:
@@ -114,18 +159,14 @@ class TestLinks:
                 elif status_code >= 400:
                     self.log_result(broken_log, full_link, status_code, source_page, context_text, "❌ Broken")
                     broken_count += 1
+                elif soup and is_content_404_ui(soup):
+                    content_404s.append(f"❌ Content 404 detected on {full_link}")
+                    self.log_result(broken_log, full_link, status_code, source_page, context_text, "❌ Content 404")
+                    broken_count += 1
                 else:
                     self.log_result(working_log, full_link, status_code, source_page, None, "✅ Working")
                     valid_count += 1
-
-        self.print_summary(len(all_links), valid_count, broken_count)
-
-    def get_status(self, session, url):
-        try:
-            return session.get(url, allow_redirects=True, timeout=5).status_code
-        except requests.RequestException as e:
-            logging.error(f"❌ Request failed for {url}: {str(e)}")
-            return 500
+        return valid_count, broken_count
 
     def log_result(self, log_file, link, status, page, context=None, label=""):
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -136,9 +177,29 @@ class TestLinks:
         logging.info(message)
         log_file.write(message + "\n")
 
-    def print_summary(self, total, valid, broken):
+    def check_page_status(self, url):
+        """Checks the HTTP status code of a page before Selenium loads it."""
+        try:
+            r = requests.get(url, timeout=5)
+            return r.status_code
+        except requests.RequestException as e:
+            logging.error(f"❌ Error requesting {url}: {e}")
+            return 500
+
+    def get_status(self, session, url):
+        try:
+            return session.get(url, allow_redirects=True, timeout=5).status_code
+        except requests.RequestException as e:
+            logging.error(f"❌ Request failed for {url}: {str(e)}")
+            return 500
+
+    def print_summary(self, total, valid, broken, broken_pages=None):
         print("\n📊 Test Summary:")
         print(f"🔗 Total links: {total}")
         print(f"✅ Valid: {valid}")
-        print(f"❌ Broken: {broken}")
+        print(f"❌ Broken links: {broken}")
+        if broken_pages:
+            print("\n Broken pages: ")
+            for page in broken_pages:
+                print(f"{page}")
         logging.info("✅ Test completed. Check broken_links.log and working_links.log for details.")
