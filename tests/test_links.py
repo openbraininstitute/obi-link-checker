@@ -2,7 +2,7 @@
 # Copyright (c) 2025 Open Brain Institute
 # SPDX-License-Identifier: Apache-2.0
 import re
-
+import os
 import pytest
 import requests
 import logging
@@ -16,7 +16,10 @@ from selenium.webdriver.support import expected_conditions as EC
 
 
 from pages.home_page import HomePage
+from tests.conftest import _capture_screenshot
 
+SCREENSHOTS_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), "..", "screenshots", "errors")
+os.makedirs(SCREENSHOTS_DIR, exist_ok=True)
 SIGNIFICANT_TAGS = ["tr", "td", "div", "span", "li", "section", "article", "ul", "ol"]
 
 HEADERS = {
@@ -28,15 +31,18 @@ HEADERS = {
     "Connection": "keep-alive",
 }
 
-NOT_FOUND_PATTERNS = [
+CONTENT_ERROR_PATTERNS = [
     r"\b404\b",
+    r"\b400\b",
     r"\bpage not found\b",
     r"\bnot found\b",
     r"\bthis page could not be found\b",
     r"\bwe (couldn['’]t|can[’']t) find (that|the) page\b",
     r"\bdoesn[’']t exist\b",
+    r"\bbad request\b"
 ]
-NOT_FOUND_REGEX = re.compile("|".join(NOT_FOUND_PATTERNS), re.IGNORECASE)
+# NOT_FOUND_REGEX = re.compile("|".join(NOT_FOUND_PATTERNS), re.IGNORECASE)
+CONTENT_ERROR_REGEX = re.compile("|".join(CONTENT_ERROR_PATTERNS), re.IGNORECASE)
 
 def is_content_404_ui(soup_or_text):
     """Check if the content contains a 404/page-not-found message."""
@@ -45,7 +51,7 @@ def is_content_404_ui(soup_or_text):
     text = text.lower()
     text = text.replace("‘", "'").replace("’", "'").replace("“", '"').replace("”", '"')
     text = " ".join(text.split())  # normalize whitespace
-    return bool(re.search("|".join([p.lower() for p in NOT_FOUND_PATTERNS]), text))
+    return bool(re.search("|".join([p.lower() for p in CONTENT_ERROR_PATTERNS]), text))
 
 
 def get_element_context(soup, href):
@@ -96,7 +102,7 @@ class TestLinks:
         assert all_links, "❌ No links found on the website."
         print(f"🔗 Found {len(all_links)} unique links")
 
-        valid_count, broken_count = self.validate_links(base_url, all_links, link_sources, content_404s)
+        valid_count, broken_count = self.validate_links(base_url, all_links, link_sources, content_404s, browser)
         self.print_summary(len(all_links), valid_count, broken_count, content_404s)
 
         if content_404s:
@@ -112,7 +118,9 @@ class TestLinks:
 
             status = self.check_page_status(page)
             if status >= 400:
-                raise AssertionError(f"❌ Page {page} returned HTTP {status} before Selenium navigation.")
+                content_404s.append(f"❌ Page {page} returned HTTP {status}")
+                # raise AssertionError(f"❌ Page {page} returned HTTP {status} before Selenium navigation.")
+                continue
 
             all_links[page] = None
             link_sources[page] = f"{context} PAGE ITSELF"
@@ -125,6 +133,12 @@ class TestLinks:
 
             if is_content_404_ui(soup):
                 content_404s.append(f"❌ Detected 404 content on {page}")
+
+                screenshot_path = os.path.join(
+                    SCREENSHOTS_DIR,
+                    f"{page.replace('/', '_').replace(':', '_')}.png"
+                )
+                _capture_screenshot(screenshot_path, browser)
                 continue
 
             page_links = home_page.get_all_links()
@@ -133,7 +147,7 @@ class TestLinks:
                 all_links[full_link] = soup
                 link_sources[full_link] = page
 
-    def validate_links(self, base_url, all_links, link_sources, content_404s):
+    def validate_links(self, base_url, all_links, link_sources, content_404s, browser):
         session = requests.Session()
         HEADERS["Referer"] = base_url
         session.headers.update(HEADERS)
@@ -161,6 +175,13 @@ class TestLinks:
                     broken_count += 1
                 elif soup and is_content_404_ui(soup):
                     content_404s.append(f"❌ Content 404 detected on {full_link}")
+
+                    screenshot_path = os.path.join(
+                        SCREENSHOTS_DIR,
+                        f"{full_link.replace('/', '_').replace(':', '_')}.png"
+                    )
+                    _capture_screenshot(screenshot_path, browser)
+
                     self.log_result(broken_log, full_link, status_code, source_page, context_text, "❌ Content 404")
                     broken_count += 1
                 else:
