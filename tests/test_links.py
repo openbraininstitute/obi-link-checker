@@ -116,11 +116,17 @@ class TestLinks:
         valid_count, broken_count = self.validate_links(base_url, all_links, link_sources, content_404s, browser)
         self.print_summary(len(all_links), valid_count, broken_count, content_404s)
 
+        errors = []
+        if broken_count > 0:
+            errors.append(f"{broken_count} broken HTTP links")
         if content_404s:
-            print("\n🚨 Content 404 Errors Found:")
-            for err in content_404s:
-                print(err)
-            raise AssertionError(f"Found {len(content_404s)} content 404 pages")
+            errors.append(f"{len(content_404s)} content 404 pages")
+        if errors:
+           if content_404s:
+                print("\n🚨 Content 404 Errors Found:")
+                for err in content_404s:
+                    print(err)
+           raise AssertionError(f"Broken links detected: " + ", ".join(errors))
 
     def collect_links_from_pages(self, pages, context, browser, base_url, wait, home_page, all_links, link_sources,
                                  content_404s):
@@ -168,6 +174,12 @@ class TestLinks:
         HEADERS["Referer"] = base_url
         session.headers.update(HEADERS)
 
+        os.makedirs("logs", exist_ok=True)
+        run_id = os.getenv("GITHUB_RUN_ID")
+        ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        broken_path = f"logs/broken_links_{run_id or ts}.log"
+        working_path = f"logs/working_links_{run_id or ts}.log"
+
         broken_count = 0
         valid_count = 0
 
@@ -192,10 +204,8 @@ class TestLinks:
                     try:
                         self.log_result(broken_log, full_link, status_code, source_page, context_text, "❌ Broken")
                         _capture_screenshot("http_error", browser, full_link)
-                        # broken_count += 1
                     except Exception as e:
                         print(f"⚠️ Could not navigate to {full_link} for screenshot: {e}")
-                    # self.log_result(broken_log, full_link, status_code, source_page, context_text, "❌ Broken")
 
                 elif soup and is_content_404_ui(soup):
                     self.log_result(broken_log, full_link, status_code, source_page, context_text, "❌ Content 404")
@@ -203,10 +213,13 @@ class TestLinks:
                     logging.info(f"❌ Content 404 detected on {full_link} — capturing screenshot")
 
                     content_404s.append(f"❌ Content 404 detected on {full_link}")
-                    browser.get(full_link)  # reload the exact URL
-                    WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-                    time.sleep(2)
-                    _capture_screenshot("content_404", browser, full_link)
+                    try:
+                        browser.get(full_link)  # reload the exact URL
+                        WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+                        time.sleep(2)
+                        _capture_screenshot("content_404", browser, full_link)
+                    except Exception as e:
+                        print(f"⚠️ Could not open {full_link} for screenshot: {e}")
                     broken_count += 1
 
                 else:
@@ -226,7 +239,8 @@ class TestLinks:
     def check_page_status(self, url):
         """Checks the HTTP status code of a page before Selenium loads it."""
         try:
-            r = requests.get(url, timeout=5)
+            # r = requests.get(url, timeout=5)
+            r = requests.get(url, timeout=5, headers=HEADERS)
             return r.status_code
         except requests.RequestException as e:
             logging.error(f"❌ Error requesting {url}: {e}")

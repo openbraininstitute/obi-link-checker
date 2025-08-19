@@ -1,6 +1,10 @@
-name: Deploy to Environment
+name: Run all tests
 
 on:
+  push:
+    branches:
+      - main
+      - 'feature*'
   workflow_call:
     inputs:
       env:
@@ -54,10 +58,10 @@ jobs:
           firefox --version
 
       # Create a directory for logs
-      - name: Create Logs Directory
+      - name: Create Logs Directories
         run: |
           mkdir -p logs/errors
-          ls -la logs   
+          mkdir -p logs
 
       - name: Run Tests Based on Environment
         env:
@@ -69,9 +73,13 @@ jobs:
           echo "Running tests in $ENV_URL with Username $OBI_USERNAME"
           echo "ENV_URL: $ENV_URL"  
           echo "ENV_NAME: $ENV_NAME"
-          uv run pytest tests/test_links.py --env=$ENV_NAME --env_url=$ENV_URL \
-          -sv --headless --html=logs/report_${ENV_NAME}_firefox.html \
-            --self-contained-html --browser-name=firefox
+          uv run pytest tests/test_links.py \
+          --env=$ENV_NAME --env_url=$ENV_URL \
+          -sv \
+          --headless \
+          --html=logs/report_${ENV_NAME}_firefox.html \
+          --self-contained-html --browser-name=firefox \
+          2>&1 | tee logs/broken_links_${{ github.run_id }}.log
 
       # Upload test artifacts (screenshots) if failure
       - name: Upload test artifacts (screenshots)
