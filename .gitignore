@@ -16,6 +16,7 @@ env/
 # Logs and Debugging
 logs/
 *.log
+screenshots/
 
 # Test & Coverage Reports
 .coverage

@@ -1,6 +1,8 @@
 # Copyright (c) 2024 Blue Brain Project/EPFL
 # Copyright (c) 2025 Open Brain Institute
 # SPDX-License-Identifier: Apache-2.0
+
+
 import re
 import os
 import pytest
@@ -18,8 +20,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from pages.home_page import HomePage
 from tests.conftest import _capture_screenshot
 
-SCREENSHOTS_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), "..", "screenshots", "errors")
-os.makedirs(SCREENSHOTS_DIR, exist_ok=True)
 SIGNIFICANT_TAGS = ["tr", "td", "div", "span", "li", "section", "article", "ul", "ol"]
 
 HEADERS = {
@@ -41,16 +41,14 @@ CONTENT_ERROR_PATTERNS = [
     r"\bdoesn[’']t exist\b",
     r"\bbad request\b"
 ]
-# NOT_FOUND_REGEX = re.compile("|".join(NOT_FOUND_PATTERNS), re.IGNORECASE)
 CONTENT_ERROR_REGEX = re.compile("|".join(CONTENT_ERROR_PATTERNS), re.IGNORECASE)
 
 def is_content_404_ui(soup_or_text):
     """Check if the content contains a 404/page-not-found message."""
     text = soup_or_text.get_text(separator=" ", strip=True) if hasattr(soup_or_text, "get_text") else soup_or_text
-    # normalize text
     text = text.lower()
     text = text.replace("‘", "'").replace("’", "'").replace("“", '"').replace("”", '"')
-    text = " ".join(text.split())  # normalize whitespace
+    text = " ".join(text.split())
     return bool(re.search("|".join([p.lower() for p in CONTENT_ERROR_PATTERNS]), text))
 
 
@@ -119,7 +117,13 @@ class TestLinks:
             status = self.check_page_status(page)
             if status >= 400:
                 content_404s.append(f"❌ Page {page} returned HTTP {status}")
-                # raise AssertionError(f"❌ Page {page} returned HTTP {status} before Selenium navigation.")
+                try:
+                    # Force browser to actually open the failing page
+                    browser.get(page)
+                    time.sleep(2)  # wait for error page to render
+                    _capture_screenshot( "http_error", browser, page,)
+                except Exception as e:
+                    print(f"⚠️ Could not navigate to {page} for screenshot: {e}")
                 continue
 
             all_links[page] = None
@@ -132,13 +136,12 @@ class TestLinks:
             soup = BeautifulSoup(browser.page_source, "html.parser")
 
             if is_content_404_ui(soup):
+                print(f"❌ Content 404 detected on {page} — capturing screenshot")
                 content_404s.append(f"❌ Detected 404 content on {page}")
-
-                screenshot_path = os.path.join(
-                    SCREENSHOTS_DIR,
-                    f"{page.replace('/', '_').replace(':', '_')}.png"
-                )
-                _capture_screenshot(screenshot_path, browser)
+                browser.get(page)
+                WebDriverWait(browser, 5).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+                time.sleep(1)
+                _capture_screenshot("content_404", browser, page)
                 continue
 
             page_links = home_page.get_all_links()
@@ -170,20 +173,28 @@ class TestLinks:
                 if status_code == 403:
                     self.log_result(broken_log, full_link, status_code, source_page, context_text, "⚠️ Forbidden")
                     broken_count += 1
+
                 elif status_code >= 400:
+                    try:
+                        self.log_result(broken_log, full_link, status_code, source_page, context_text, "❌ Broken")
+                        _capture_screenshot("http_error", browser, full_link)
+                        broken_count += 1
+                    except Exception as e:
+                        print(f"⚠️ Could not navigate to {full_link} for screenshot: {e}")
                     self.log_result(broken_log, full_link, status_code, source_page, context_text, "❌ Broken")
                     broken_count += 1
                 elif soup and is_content_404_ui(soup):
-                    content_404s.append(f"❌ Content 404 detected on {full_link}")
-
-                    screenshot_path = os.path.join(
-                        SCREENSHOTS_DIR,
-                        f"{full_link.replace('/', '_').replace(':', '_')}.png"
-                    )
-                    _capture_screenshot(screenshot_path, browser)
-
                     self.log_result(broken_log, full_link, status_code, source_page, context_text, "❌ Content 404")
+                    print(f"❌ Content 404 detected on {full_link} — capturing screenshot")
+                    logging.info(f"❌ Content 404 detected on {full_link} — capturing screenshot")
+
+                    content_404s.append(f"❌ Content 404 detected on {full_link}")
+                    browser.get(full_link)  # reload the exact URL
+                    WebDriverWait(browser, 5).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+                    time.sleep(1)
+                    _capture_screenshot("content_404", browser, full_link)
                     broken_count += 1
+
                 else:
                     self.log_result(working_log, full_link, status_code, source_page, None, "✅ Working")
                     valid_count += 1
@@ -224,3 +235,5 @@ class TestLinks:
             for page in broken_pages:
                 print(f"{page}")
         logging.info("✅ Test completed. Check broken_links.log and working_links.log for details.")
+
+

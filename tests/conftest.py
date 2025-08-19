@@ -13,8 +13,6 @@ from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from selenium.webdriver.firefox.service import Service as FirefoxService
-from selenium.webdriver.safari.options import Options as SafariOptions
-from selenium.webdriver.safari.service import Service as SafariService
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.firefox import GeckoDriverManager
@@ -22,8 +20,11 @@ from selenium.webdriver.support import expected_conditions as EC
 
 from pages.landing_page import LandingPage
 from pages.login_page import LoginPage
-from util.util_base import load_config
 
+def get_safe_config(config):
+    safe = config.copy()
+    safe["password"] = "****"
+    return safe
 
 def pytest_addoption(parser):
     """Allows running tests in headless mode with --headless flag."""
@@ -57,7 +58,6 @@ def test_config(pytestconfig):
 
     return {
         "username": username,
-        "password": password,
         "base_url": base_url,
         "lab_url": lab_url,
         "lab_id": lab_id,
@@ -143,12 +143,12 @@ def login(setup, navigate_to_login, test_config, logger):
     login_page = navigate_to_login
 
     username = test_config.get("username")
-    password = test_config.get("password")
+    password = os.getenv("OBI_PASSWORD")
 
     if not username or not password:
         raise ValueError("Username or password is missing in the configuration!")
 
-    login_page.perform_login(username, password)
+    login_page.perform_login(test_config["username"], password)
     login_page.wait_for_login_complete()
     print("Login successful. Current URL:", browser.current_url)
     login_page = LoginPage(browser, wait, base_url, logger)
@@ -208,7 +208,10 @@ def pytest_runtest_makereport(item):
 
         report.extra = extra
 
-def _capture_screenshot(name_prefix, browser, url=None):
+
+SCREENSHOTS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "screenshots", "errors"))
+
+def _capture_screenshot(name_prefix: str, browser, url: str=None):
     """
     Capture and save a screenshot with a unique filename.
 
@@ -217,14 +220,15 @@ def _capture_screenshot(name_prefix, browser, url=None):
     :param url: Optional URL to include in the filename for uniqueness.
     """
     try:
-        os.makedirs(os.path.dirname(name_prefix), exist_ok=True)
+        os.makedirs(SCREENSHOTS_DIR, exist_ok=True)
         timestamp = int(time.time() * 1000)
         url_hash = hashlib.md5(url.encode('utf-8')).hexdigest()[:8] if url else ""
-        filename = f"{os.path.basename(name_prefix)}_{timestamp}_{url_hash}.png"
-        full_path = os.path.join(os.path.dirname(name_prefix), filename)
+        filename = f"{name_prefix}_{timestamp}_{url_hash}.png"
+        full_path = os.path.join(SCREENSHOTS_DIR, filename)
 
         browser.save_screenshot(full_path)
         print(f"Screenshot captured: {full_path}")
+        return full_path
     except Exception as e:
         print(f"Failed to capture screenshot '{name_prefix}': {e}")
 
@@ -258,3 +262,8 @@ def logger():
     yield logger
 
     logger.info("🛑 Test finished")
+
+
+def mask_sensitive(config):
+    """Mask sensitive keys like 'password' before logging."""
+    return {k: (v if "pass" in k.lower() else "***") for k, v in config.items()}

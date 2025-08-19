@@ -18,7 +18,6 @@ class HomePage(CustomBasePage):
 
     def get_pages(self, lab_id, project_id):
         """Returns list of dynamic pages based on lab/project IDs."""
-        # return get_dynamic_pages(self.base_url)
         return get_dynamic_pages(self.base_url, lab_id, project_id)
 
     def go_to_home_page(self):
