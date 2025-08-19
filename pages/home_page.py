@@ -23,7 +23,6 @@ class HomePage(CustomBasePage):
     def go_to_home_page(self):
         """Navigates to the homepage."""
         self.go_to_page("")
-        print(f"************HomePage - {self.browser.current_url}")
         self.logger.info("Navigated to homepage.")
 
     def login_and_scrape(self, login_fixture):
