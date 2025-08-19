@@ -1,7 +1,7 @@
 # Copyright (c) 2024 Blue Brain Project/EPFL
 # Copyright (c) 2025 Open Brain Institute
 # SPDX-License-Identifier: Apache-2.0
-
+import hashlib
 import logging
 import os
 import sys
@@ -21,6 +21,10 @@ from selenium.webdriver.support import expected_conditions as EC
 from pages.landing_page import LandingPage
 from pages.login_page import LoginPage
 
+def get_safe_config(config):
+    safe = config.copy()
+    safe["password"] = "****"
+    return safe
 
 def pytest_addoption(parser):
     """Allows running tests in headless mode with --headless flag."""
@@ -54,7 +58,6 @@ def test_config(pytestconfig):
 
     return {
         "username": username,
-        "password": password,
         "base_url": base_url,
         "lab_url": lab_url,
         "lab_id": lab_id,
@@ -66,23 +69,33 @@ def setup(request, pytestconfig, test_config):
     """Fixture to set up the WebDriver."""
     environment = pytestconfig.getoption("env")
     browser_name = pytestconfig.getoption("--browser-name")
+    headless_flag = pytestconfig.getoption("--headless")
+    print(f"Starting tests in {environment.upper()} mode. Headless={headless_flag}")
     base_url = test_config["base_url"]
     lab_id = test_config["lab_id"]
     project_id = test_config["project_id"]
 
-    print(f"Starting tests in {environment.upper()} mode.")
-
+    browser = None
     if browser_name == "chrome":
         options = ChromeOptions()
-        if pytestconfig.getoption("--headless"):
+        if headless_flag:
             options.add_argument("--headless")
-            options.add_argument("--ignore-certificate-errors")
+            options.add_argument("--disable-gpu")
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("--window-size=1920,1080")
+            print("Chrome running in headless mode")
         browser = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
+
     elif browser_name == "firefox":
         options = FirefoxOptions()
-        if pytestconfig.getoption("--headless"):
+        if headless_flag:
             options.add_argument("--headless")
+            options.add_argument("--width=1920")
+            options.add_argument("--height=1080")
+            print("Firefox running in headless mode")
         browser = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()), options=options)
+
     else:
         raise ValueError(f"Unsupported browser: {browser_name}")
 
@@ -92,14 +105,14 @@ def setup(request, pytestconfig, test_config):
     request.cls.base_url = base_url
     request.cls.lab_id = lab_id
     request.cls.project_id = project_id
-
     request.cls.browser = browser
     request.cls.wait = wait
 
     yield browser, wait, base_url, lab_id, project_id
 
-    if browser is not None:
+    if browser:
         browser.quit()
+
 
 @pytest.fixture(scope="function")
 def navigate_to_landing_page(setup, logger, test_config):
@@ -112,9 +125,9 @@ def navigate_to_landing_page(setup, logger, test_config):
 
 @pytest.fixture(scope="function")
 def navigate_to_login(setup, navigate_to_landing_page, logger, request, test_config):
-    """Fixture that navigates to the login page"""
-    browser, wait, lab_url, lab_id, project_id = setup
+    browser, wait, base_url, lab_id, project_id = setup  # FIXED: unpack correctly
     landing_page = navigate_to_landing_page
+    print("Navigating from landing page to login page")
     landing_page.click_go_to_lab()
 
     WebDriverWait(browser, 60).until(
@@ -126,19 +139,19 @@ def navigate_to_login(setup, navigate_to_landing_page, logger, request, test_con
 @pytest.fixture(scope="function")
 def login(setup, navigate_to_login, test_config, logger):
     """Fixture to log in and ensure user is authenticated."""
-    browser, wait, lab_url, lab_id, project_id = setup
+    browser, wait, base_url, lab_id, project_id = setup
     login_page = navigate_to_login
 
     username = test_config.get("username")
-    password = test_config.get("password")
+    password = os.getenv("OBI_PASSWORD")
 
     if not username or not password:
         raise ValueError("Username or password is missing in the configuration!")
 
-    login_page.perform_login(username, password)
+    login_page.perform_login(test_config["username"], password)
     login_page.wait_for_login_complete()
     print("Login successful. Current URL:", browser.current_url)
-    login_page = LoginPage(browser, wait, lab_url, logger)
+    login_page = LoginPage(browser, wait, base_url, logger)
 
 
 @pytest.hookimpl(hookwrapper=True)
@@ -194,23 +207,30 @@ def pytest_runtest_makereport(item):
                 print("No browser object found - skipping screenshot capture")
 
         report.extra = extra
-def _capture_screenshot(name, browser):
-    """
-        Helper function to capture and save a screenshot.
 
-        - Ensures the target directory exists.
-        - Uses the browser object to capture a full-page screenshot.
-        :param name: The full path where the screenshot will be saved.
-        :param browser: The browser object used for screenshot capture.
-        """
+
+SCREENSHOTS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "screenshots", "errors"))
+
+def _capture_screenshot(name_prefix: str, browser, url: str=None):
+    """
+    Capture and save a screenshot with a unique filename.
+
+    :param name_prefix: Base folder/path for the screenshot.
+    :param browser: Browser object to capture the screenshot.
+    :param url: Optional URL to include in the filename for uniqueness.
+    """
     try:
-        print(f"Creating error  directory at:{os.path.dirname(name)}")
-        os.makedirs(os.path.dirname(name), exist_ok=True)
-        print(f"Saving screenshot to: {name}")
-        browser.save_screenshot(name)
-        print(f"Screenshot captured: {name}")
+        os.makedirs(SCREENSHOTS_DIR, exist_ok=True)
+        timestamp = int(time.time() * 1000)
+        url_hash = hashlib.md5(url.encode('utf-8')).hexdigest()[:8] if url else ""
+        filename = f"{name_prefix}_{timestamp}_{url_hash}.png"
+        full_path = os.path.join(SCREENSHOTS_DIR, filename)
+
+        browser.save_screenshot(full_path)
+        print(f"Screenshot captured: {full_path}")
+        return full_path
     except Exception as e:
-        print(f"Failed to capture screenshot '{name}': {e}")
+        print(f"Failed to capture screenshot '{name_prefix}': {e}")
 
 @pytest.fixture(scope="class")
 def logger():
@@ -222,10 +242,7 @@ def logger():
     logs_dir = os.path.join(project_root, "..", "logs")
     os.makedirs(logs_dir, exist_ok=True)
 
-
     log_file_path = os.path.join(logs_dir, "error.log")
-
-    # Remove existing handlers to prevent duplicates
     if logger.hasHandlers():
         logger.handlers.clear()
 
@@ -245,3 +262,8 @@ def logger():
     yield logger
 
     logger.info("🛑 Test finished")
+
+
+def mask_sensitive(config):
+    """Mask sensitive keys like 'password' before logging."""
+    return {k: (v if "pass" in k.lower() else "***") for k, v in config.items()}

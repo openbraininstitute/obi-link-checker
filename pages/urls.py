@@ -10,8 +10,10 @@ def get_dynamic_pages(base_url, lab_id, project_id):
         f"{base_url}/resources",
         f"{base_url}/terms",
         f"{base_url}/privacy",
+        f"{base_url}/financing",
+        f"{base_url}/the-real-digital-brain-story",
         f"{base_url}/app/virtual-lab/lab/{lab_id}/overview",
-        f"{base_url}/app/virtual-lab/lab/{lab_id}/projects",
+        f"{base_url}/app/virtual-lab/explore/interactive/model/e-model/e19cac05-525d-40e6-9482-5126c8c00453",
         f"{base_url}/app/virtual-lab/lab/{lab_id}/project/{project_id}/home",
         f"{base_url}/app/virtual-lab/lab/{lab_id}/project/{project_id}/team",
         f"{base_url}/app/virtual-lab/lab/{lab_id}/project/{project_id}/library",
@@ -24,7 +26,7 @@ def get_dynamic_pages(base_url, lab_id, project_id):
         f"{base_url}/app/virtual-lab/lab/{lab_id}/project/"
         f"{project_id}/explore/interactive/experimental/electrophysiology?brainRegion=http%253A%252F%252Fapi.brain-map.org%252Fapi%252Fv2%252Fdata%252FStructure%252F567",
         f"{base_url}/app/virtual-lab/lab/{lab_id}/project/"
-        f"{project_id}/explore/interactive/experimental/neuron-density?brainRegion=http%253A%252F%252Fapi.brain-map.org%252Fapi%252Fv2%252Fdata%252FStructure%252F567",
+        f"{project_id}/explore/interactive/experimental/neuron-density?br_id=5c60bf3e-5335-4971-a8ec-6597292452b2&br_av=567",
         f"{base_url}/app/virtual-lab/lab/{lab_id}/project/"
         f"{project_id}/explore/interactive/experimental/bouton-density?brainRegion=http%253A%252F%252Fapi.brain-map.org%252Fapi%252Fv2%252Fdata%252FStructure%252F567",
         f"{base_url}/app/virtual-lab/lab/{lab_id}/project/"

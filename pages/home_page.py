@@ -4,7 +4,6 @@
 
 
 import time
-import logging
 from pages.base_page import CustomBasePage
 from pages.urls import get_dynamic_pages
 
@@ -12,11 +11,10 @@ from pages.urls import get_dynamic_pages
 class HomePage(CustomBasePage):
     def __init__(self, browser, wait, base_url, logger):
         super().__init__(browser, wait, base_url, logger)
-        self.logger = logging.getLogger(__name__)
+        self.logger = logger
         self.lab_id = "d8f2d02a-05b9-4e25-8f68-45b7d8818703"
         self.project_id = "8fd987ca-8f05-497b-939f-c77027ddd004"
         self.pages = get_dynamic_pages(base_url,self.lab_id, self.project_id)
-        self.logger = logger
 
     def get_pages(self, lab_id, project_id):
         """Returns list of dynamic pages based on lab/project IDs."""

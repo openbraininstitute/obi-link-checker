@@ -32,7 +32,7 @@ class LandingPage(HomePage):
 
     def click_go_to_lab(self):
         try:
-            go_to_lab = self.find_element(LandingLocators.GOTO_LAB)
+            go_to_lab = self.element_to_be_clickable(LandingLocators.GOTO_LAB)
             go_to_lab.click()
             self.logger.info("✅ Clicked 'Go to Lab' button.")
         except Exception as e:
