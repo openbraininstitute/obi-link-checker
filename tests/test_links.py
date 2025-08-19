@@ -32,25 +32,35 @@ HEADERS = {
 }
 
 CONTENT_ERROR_PATTERNS = [
-    r"\b404\b",
-    r"\b400\b",
+    r"\b404 not found\b",
+    r"\bhttp 404\b",
+    r"\b400 bad request\b",
     r"\bpage not found\b",
-    r"\bnot found\b",
     r"\bthis page could not be found\b",
     r"\bwe (couldn['’]t|can[’']t) find (that|the) page\b",
-    r"\bdoesn[’']t exist\b",
-    r"\bbad request\b"
+    r"\bthe requested url was not found\b",
+    r"\bdoes not exist\b",
+    r"\bthe page you are looking for\b",
+    r"\berror 404\b",
+    r"\berror 400\b"
 ]
 CONTENT_ERROR_REGEX = re.compile("|".join(CONTENT_ERROR_PATTERNS), re.IGNORECASE)
-
 def is_content_404_ui(soup_or_text):
     """Check if the content contains a 404/page-not-found message."""
     text = soup_or_text.get_text(separator=" ", strip=True) if hasattr(soup_or_text, "get_text") else soup_or_text
     text = text.lower()
     text = text.replace("‘", "'").replace("’", "'").replace("“", '"').replace("”", '"')
     text = " ".join(text.split())
-    return bool(re.search("|".join([p.lower() for p in CONTENT_ERROR_PATTERNS]), text))
+    # return bool(CONTENT_ERROR_REGEX.search(text))
+    # print("DEBUG text snippet:", text[:500])
+    #
+    # return bool(re.search("|".join([p.lower() for p in CONTENT_ERROR_PATTERNS]), text))
 
+    matches = [p for p in CONTENT_ERROR_PATTERNS if re.search(p, text, re.IGNORECASE)]
+    if matches:
+        print("DEBUG: matched patterns:", matches)
+
+    return bool(CONTENT_ERROR_REGEX.search(text))
 
 def get_element_context(soup, href):
     """Extracts the parent and text context of a link in a BeautifulSoup document."""
@@ -69,7 +79,10 @@ def get_element_context(soup, href):
                 break
 
     if parent:
-        return f"<{parent.name} class='{parent.get('class')}'> - {parent.get_text(strip=True)}"
+        classes = " ".join(parent.get("class", []))
+        return f"<{parent.name} class='{classes}'> - {parent.get_text(strip=True)}"
+        # return f"<{parent.name} class='{parent.get('class')}'> - {parent.get_text(strip=True)}"
+
     return "[Unknown Element] - [No text]"
 
 
@@ -139,8 +152,8 @@ class TestLinks:
                 print(f"❌ Content 404 detected on {page} — capturing screenshot")
                 content_404s.append(f"❌ Detected 404 content on {page}")
                 browser.get(page)
-                WebDriverWait(browser, 5).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-                time.sleep(1)
+                WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+                time.sleep(2)
                 _capture_screenshot("content_404", browser, page)
                 continue
 
@@ -175,14 +188,15 @@ class TestLinks:
                     broken_count += 1
 
                 elif status_code >= 400:
+                    broken_count += 1
                     try:
                         self.log_result(broken_log, full_link, status_code, source_page, context_text, "❌ Broken")
                         _capture_screenshot("http_error", browser, full_link)
-                        broken_count += 1
+                        # broken_count += 1
                     except Exception as e:
                         print(f"⚠️ Could not navigate to {full_link} for screenshot: {e}")
-                    self.log_result(broken_log, full_link, status_code, source_page, context_text, "❌ Broken")
-                    broken_count += 1
+                    # self.log_result(broken_log, full_link, status_code, source_page, context_text, "❌ Broken")
+
                 elif soup and is_content_404_ui(soup):
                     self.log_result(broken_log, full_link, status_code, source_page, context_text, "❌ Content 404")
                     print(f"❌ Content 404 detected on {full_link} — capturing screenshot")
@@ -190,8 +204,8 @@ class TestLinks:
 
                     content_404s.append(f"❌ Content 404 detected on {full_link}")
                     browser.get(full_link)  # reload the exact URL
-                    WebDriverWait(browser, 5).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-                    time.sleep(1)
+                    WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+                    time.sleep(2)
                     _capture_screenshot("content_404", browser, full_link)
                     broken_count += 1
 
