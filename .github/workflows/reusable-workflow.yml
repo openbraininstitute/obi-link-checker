@@ -1,10 +1,6 @@
 name: Run all tests
 
 on:
-  push:
-    branches:
-      - main
-      - 'feature*'
   workflow_call:
     inputs:
       env:
@@ -86,15 +82,27 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: error-screenshots
+          name: error-screenshots-${{ matrix.browser }}-${{ github.run_id }}-${{ github.job }}-${{ github.run_attempt }}-${{ github.sha }}
           path: logs/errors
           if-no-files-found: warn
+          overwrite: true
 
-      # Upload `broken_links.log` to GitHub Actions artifacts
-      - name: Upload Broken Links Log
+      # Upload pytest HTML report
+      - name: Upload Pytest HTML Report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: broken-links-log-${{ github.run_id }}
+          name: pytest-html-report-${{ inputs.env }}-${{ matrix.browser }}-${{ github.run_id }}-${{ github.job }}-${{ github.run_attempt }}
+          path: logs/report_${{ inputs.env }}_${{ matrix.browser }}.html
+          if-no-files-found: warn
+          overwrite: true
+
+            # Upload broken links log
+      - name: Upload Broken Links Log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: broken-links-log-${{ inputs.env }}-${{ matrix.browser }}-${{ github.run_id }}-${{ github.job }}-${{ github.run_attempt }}
           path: logs/broken_links_${{ github.run_id }}.log
           if-no-files-found: warn
-
+          overwrite: true
