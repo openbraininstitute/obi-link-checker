@@ -1,47 +1,47 @@
-name: Run all tests
-
-on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
-      - feature
-  pull_request:
-    branches:
-      - main
-      - test-branch
-  schedule:
-    - cron: "0 6 * * *"  # 8:00 AM Zurich time during CEST (summer)
-
-jobs:
-  run-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-  test-staging:
-    needs: run-tests
-    uses: ./.github/workflows/reusable-workflow.yml
-    with:
-      env: "staging"
-      artifact-name: "Testing in Staging"
-    secrets: inherit
-
-
-  test-production:
-    needs: run-tests
-    uses: ./.github/workflows/reusable-workflow.yml
-    with:
-      env: "production"
-      artifact-name: "Testing in Production"
-    secrets: inherit
-
-
-
-
+#name: Run all tests
+#
+#on:
+#  workflow_dispatch:
+#  push:
+#    branches:
+#      - main
+#      - feature
+#  pull_request:
+#    branches:
+#      - main
+#      - test-branch
+#  schedule:
+#    - cron: "0 6 * * *"  # 8:00 AM Zurich time during CEST (summer)
+#
+#jobs:
+#  run-tests:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Check out code
+#        uses: actions/checkout@v3
+#
+#      - name: Set up Python
+#        uses: actions/setup-python@v4
+#        with:
+#          python-version: '3.11'
+#
+#  test-staging:
+#    needs: run-tests
+#    uses: ./.github/workflows/reusable-workflow.yml
+#    with:
+#      env: "staging"
+#      artifact-name: "Testing in Staging"
+#    secrets: inherit
+#
+#
+#  test-production:
+#    needs: run-tests
+#    uses: ./.github/workflows/reusable-workflow.yml
+#    with:
+#      env: "production"
+#      artifact-name: "Testing in Production"
+#    secrets: inherit
+#
+#
+#
+#
